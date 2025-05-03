@@ -20,14 +20,24 @@ const LoginForm = () => {
     
     // Simulate API call
     setTimeout(() => {
-      // For demo, any email that ends with @doctor.med is a doctor
-      if (email.endsWith('@doctor.med')) {
+      // Admin login
+      if (email.toLowerCase() === 'admin' && password === '3581') {
+        toast({
+          title: "Admin login successful",
+          description: "Welcome, Administrator.",
+        });
+        navigate('/doctor-dashboard');
+      }
+      // Doctor login
+      else if (email.endsWith('@doctor.med')) {
         toast({
           title: "Login successful",
           description: "Welcome back, Doctor.",
         });
         navigate('/doctor-dashboard');
-      } else if (email.length === 9 && !isNaN(Number(email))) {
+      } 
+      // Patient login using 9-digit ID
+      else if (email.length === 9 && !isNaN(Number(email))) {
         // Patient login using 9-digit ID
         const birthDatePattern = /^\d{4}-\d{2}-\d{2}$/;
         if (birthDatePattern.test(password)) {
@@ -55,7 +65,7 @@ const LoginForm = () => {
   };
 
   return (
-    <div className="w-full max-w-md space-y-8 rounded-xl bg-card p-8 shadow-lg">
+    <div className="w-full max-w-md space-y-8 rounded-xl bg-white p-8 shadow-lg border border-primary/20">
       <div className="text-center">
         <h2 className="mt-6 text-3xl font-bold text-foreground">Medical Portal</h2>
         <p className="mt-2 text-sm text-muted-foreground">
@@ -65,14 +75,14 @@ const LoginForm = () => {
       <form className="mt-8 space-y-6" onSubmit={handleLogin}>
         <div className="space-y-4 rounded-md">
           <div>
-            <Label htmlFor="email">Email or Patient ID</Label>
+            <Label htmlFor="email">Email, Admin, or Patient ID</Label>
             <Input
               id="email"
               name="email"
               type="text"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="doctor@doctor.med or 9-digit ID"
+              placeholder="doctor@doctor.med, admin, or 9-digit ID"
               required
               className="mt-1"
             />
@@ -94,7 +104,7 @@ const LoginForm = () => {
 
         <Button 
           type="submit" 
-          className="w-full bg-medical-secondary hover:bg-medical-accent"
+          className="w-full bg-primary hover:bg-primary/90"
           disabled={isLoading}
         >
           {isLoading ? "Signing in..." : "Sign in"}

@@ -49,17 +49,17 @@ const PatientProfile = () => {
     bodyConditions: [
       {
         bodyPart: 'rightLeg',
-        severity: 'mild',
+        severity: 'mild' as const,
         description: 'Mild inflammation due to previous ankle sprain',
       },
       {
         bodyPart: 'head',
-        severity: 'moderate',
+        severity: 'moderate' as const,
         description: 'Frequent migraine complaints, particularly in temporal region',
       },
       {
         bodyPart: 'abdomen',
-        severity: 'severe',
+        severity: 'severe' as const,
         description: 'Severe pain reported after meals, possibly related to digestive issues',
       },
     ],
@@ -88,7 +88,7 @@ const PatientProfile = () => {
             <div className="sticky top-8">
               <h2 className="text-xl font-bold mb-4">Body Diagram</h2>
               <div className="bg-card border border-border rounded-lg p-4">
-                <BodyDiagram conditions={patient.bodyConditions as any} />
+                <BodyDiagram conditions={patient.bodyConditions} />
               </div>
             </div>
           </div>
