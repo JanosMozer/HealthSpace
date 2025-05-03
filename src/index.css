@@ -51,3 +51,30 @@
     @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
   }
 }
+
+/* Add condition highlight colors */
+@layer components {
+  .fill-condition-mild {
+    fill: #FFC107;
+  }
+  
+  .fill-condition-moderate {
+    fill: #FF9800;
+  }
+  
+  .fill-condition-severe {
+    fill: #F44336;
+  }
+  
+  .bg-condition-mild {
+    background-color: #FFC107;
+  }
+  
+  .bg-condition-moderate {
+    background-color: #FF9800;
+  }
+  
+  .bg-condition-severe {
+    background-color: #F44336;
+  }
+}
