@@ -3,39 +3,22 @@ import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { FileText } from 'lucide-react';
-import { BodyPart } from '@/types/patient';
-
-// Define patient type
-interface PatientType {
-  id: string;
-  name: string;
-  age: number;
-  dob: string;
-  gender: string;
-  currentConditions: {
-    name: string;
-    since: string;
-    medications: string[];
-  }[];
-  medicalHistory: {
-    date: string;
-    condition: string;
-    notes: string;
-  }[];
-  bodyConditions: {
-    bodyPart: BodyPart;
-    severity: 'mild' | 'moderate' | 'severe';
-    description: string;
-  }[];
-}
+import { FileText, Plus } from 'lucide-react';
+import { Patient } from '@/types/patient';
 
 interface PatientInfoProps {
-  patient: PatientType;
+  patient: Patient;
   isReadOnly?: boolean;
+  onAddMedication?: () => void;
+  onAddHistory?: () => void;
 }
 
-const PatientInfo = ({ patient, isReadOnly = true }: PatientInfoProps) => {
+const PatientInfo = ({ 
+  patient, 
+  isReadOnly = true,
+  onAddMedication,
+  onAddHistory
+}: PatientInfoProps) => {
   const [showHistory, setShowHistory] = useState(false);
 
   const toggleHistory = () => {
@@ -60,7 +43,7 @@ const PatientInfo = ({ patient, isReadOnly = true }: PatientInfoProps) => {
               ) : (
                 <>
                   <h2 className="text-2xl font-bold text-primary">{patient.name || "Patient Name"}</h2>
-                  <p className="text-sm text-muted-foreground">ID: {patient.id}</p>
+                  <p className="text-sm text-muted-foreground">ID: {patient.identifier}</p>
                 </>
               )}
             </div>
@@ -85,10 +68,11 @@ const PatientInfo = ({ patient, isReadOnly = true }: PatientInfoProps) => {
       {/* Current conditions */}
       <Card>
         <CardHeader className="py-4 flex flex-row justify-between items-center">
-          <CardTitle className="text-xl text-primary">Current Conditions</CardTitle>
+          <CardTitle className="text-xl text-primary">Current Medications</CardTitle>
           {!isReadOnly && (
-            <Button variant="outline" size="sm">
-              Add Condition
+            <Button variant="outline" size="sm" onClick={onAddMedication}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Medication
             </Button>
           )}
         </CardHeader>
@@ -103,7 +87,7 @@ const PatientInfo = ({ patient, isReadOnly = true }: PatientInfoProps) => {
                       <p className="text-sm text-muted-foreground">Since {condition.since}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-xs text-muted-foreground mb-1">Current Medications</p>
+                      <p className="text-xs text-muted-foreground mb-1">Dosage</p>
                       <div className="flex flex-wrap justify-end gap-1">
                         {condition.medications.map((med, idx) => (
                           <span key={idx} className="text-xs px-2 py-1 rounded-full bg-muted">
@@ -120,13 +104,13 @@ const PatientInfo = ({ patient, isReadOnly = true }: PatientInfoProps) => {
             <div className="text-center py-8">
               {!isReadOnly ? (
                 <div className="bg-muted p-6 rounded-md">
-                  <p className="text-muted-foreground">No conditions recorded yet</p>
+                  <p className="text-muted-foreground">No medications recorded yet</p>
                   <p className="text-sm text-muted-foreground mt-2">
-                    Add current conditions using the button above
+                    Add medications using the button above
                   </p>
                 </div>
               ) : (
-                <p className="text-muted-foreground">No current conditions</p>
+                <p className="text-muted-foreground">No current medications</p>
               )}
             </div>
           )}
@@ -151,7 +135,8 @@ const PatientInfo = ({ patient, isReadOnly = true }: PatientInfoProps) => {
           <CardHeader className="py-4 flex flex-row justify-between items-center">
             <CardTitle className="text-xl text-primary">Medical History</CardTitle>
             {!isReadOnly && (
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={onAddHistory}>
+                <Plus className="h-4 w-4 mr-2" />
                 Add Record
               </Button>
             )}

@@ -1,15 +1,9 @@
 
 import { useState } from 'react';
-
-// Define condition types and their colors
-type ConditionSeverity = 'mild' | 'moderate' | 'severe';
-type BodyPart = 'head' | 'brain' | 'thyroid' | 'heart' | 'lungs' | 'liver' | 
-                'stomach' | 'pancreas' | 'smallIntestine' | 'largeIntestine' | 
-                'kidneys' | 'bladder' | 'leftArm' | 'rightArm' | 'leftLeg' | 'rightLeg';
+import { BodyPart } from '@/types/patient';
 
 interface Condition {
   bodyPart: BodyPart;
-  severity: ConditionSeverity;
   description: string;
 }
 
@@ -38,22 +32,14 @@ const BodyDiagram = ({ conditions = [], onAddCondition, readOnly = false }: Body
       return baseClasses + (isHovered && !readOnly ? "fill-gray-300" : "fill-gray-200");
     }
     
-    switch (condition.severity) {
-      case 'mild':
-        return baseClasses + "fill-condition-mild";
-      case 'moderate':
-        return baseClasses + "fill-condition-moderate";
-      case 'severe':
-        return baseClasses + "fill-condition-severe";
-      default:
-        return baseClasses + "fill-gray-200";
-    }
+    // Highlight affected body parts with a consistent color
+    return baseClasses + "fill-primary";
   };
   
   const handlePartClick = (part: BodyPart) => {
     if (readOnly) return;
     
-    if (onAddCondition && !getCondition(part)) {
+    if (onAddCondition) {
       onAddCondition(part);
     } else {
       setSelectedPart(part === selectedPart ? null : part);
@@ -273,22 +259,6 @@ const BodyDiagram = ({ conditions = [], onAddCondition, readOnly = false }: Body
           <p className="text-sm text-muted-foreground">{getCondition(selectedPart)?.description}</p>
         </div>
       )}
-
-      {/* Legend */}
-      <div className="mt-4 flex flex-wrap gap-4 text-xs">
-        <div className="flex items-center">
-          <div className="w-3 h-3 bg-condition-mild rounded-full mr-1"></div>
-          <span>Mild</span>
-        </div>
-        <div className="flex items-center">
-          <div className="w-3 h-3 bg-condition-moderate rounded-full mr-1"></div>
-          <span>Moderate</span>
-        </div>
-        <div className="flex items-center">
-          <div className="w-3 h-3 bg-condition-severe rounded-full mr-1"></div>
-          <span>Severe</span>
-        </div>
-      </div>
     </div>
   );
 };

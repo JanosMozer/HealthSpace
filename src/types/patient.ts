@@ -18,13 +18,9 @@ export type BodyPart =
   | 'leftLeg' 
   | 'rightLeg';
 
-// Severity levels for conditions
-export type ConditionSeverity = 'mild' | 'moderate' | 'severe';
-
 // Patient condition
 export interface Condition {
   bodyPart: BodyPart;
-  severity: ConditionSeverity;
   description: string;
 }
 
@@ -35,6 +31,7 @@ export interface Patient {
   age: number;
   dob: string;
   gender: string;
+  identifier: string;
   currentConditions: {
     name: string;
     since: string;
@@ -46,4 +43,12 @@ export interface Patient {
     notes: string;
   }[];
   bodyConditions: Condition[];
+}
+
+export interface Doctor {
+  id: string;
+  email: string;
+  name: string;
+  workplace: string;
+  identifier: string;
 }
