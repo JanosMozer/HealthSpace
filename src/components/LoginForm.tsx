@@ -80,19 +80,6 @@ const LoginForm = () => {
     }
   };
 
-  const handleDoctorSignup = async () => {
-    // ... validation ...
-    try {
-      console.log('Using Supabase client for signup:', supabase); // Add this line
-      const { data, error } = await supabase
-        .from('doctors')
-        .insert([{ name: doctorName, password: doctorPassword }])
-        .select();
-    } catch (error) {
-      console.error("Doctor signup error:", error);
-    }
-  };
-
   const handleDoctorSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -100,62 +87,80 @@ const LoginForm = () => {
     if (isSignUp) {
       // Sign up logic
       try {
-        // Check if identifier already exists
-        const { data: existingDoctor, error: checkError } = await supabase
+        // --- Debugging Step 1: Log the client instance ---
+        console.log('Using Supabase client instance in handleDoctorSubmit:', supabase);
+
+        // --- Debugging Step 2: Test a simple SELECT request ---
+        console.log('Attempting a test SELECT from doctors...');
+        const { data: testData, error: testError } = await supabase
           .from('doctors')
-          .select('identifier')
-          .eq('identifier', doctorIdentifier)
-          .maybeSingle();
-          
-        if (existingDoctor) {
-          toast({
-            title: "Registration failed",
-            description: "This identifier is already in use.",
-            variant: "destructive"
-          });
-          setLoading(false);
-          return;
+          .select('id') // Select a simple column
+          .limit(1);
+
+        if (testError) {
+          console.error('Test SELECT failed:', testError);
+          // Check network tab even on failure - did it send headers?
+        } else {
+          console.log('Test SELECT successful:', testData);
+          // Check network tab - did it send headers?
         }
-        
-        // Create new doctor
+        // --- End Debugging Step 2 ---
+
+        // --- Original INSERT logic ---
+        console.log('Attempting INSERT into doctors with data:', {
+          email: doctorEmail,
+          name: doctorName,
+          workplace: doctorWorkplace,
+          identifier: doctorIdentifier,
+        });
         const { data, error } = await supabase
           .from('doctors')
-          .insert({
-            email: doctorEmail,
-            name: doctorName,
-            workplace: doctorWorkplace,
-            identifier: doctorIdentifier
-          })
-          .select()
-          .single();
-        
+          .insert([
+            {
+              email: doctorEmail,
+              name: doctorName,
+              workplace: doctorWorkplace,
+              identifier: doctorIdentifier,
+            },
+          ])
+          .select(); // Add select() to get the inserted data back
+
+        console.log('Doctor INSERT result:', { data, error });
+
         if (error) {
-          throw error;
+          // Log the specific error
+          console.error("Doctor signup INSERT error:", error);
+          // Check if it's the RLS error (42501) or still the Auth error (401)
+          if (error.code === '42501') {
+            toast({
+              title: "Signup Failed",
+              description: "Row Level Security policy prevents registration. Please check Supabase policies.",
+              variant: "destructive",
+            });
+          } else {
+            toast({
+              title: "Signup Failed",
+              description: error.message || "Could not create doctor account.",
+              variant: "destructive",
+            });
+          }
+          return; // Stop execution on error
         }
-        
-        // Auto login after signup
-        const loginResult = await login(doctorIdentifier, doctorPassword);
-        
-        if (loginResult.success) {
-          toast({
-            title: "Registration successful",
-            description: `Welcome, Dr. ${doctorName}`,
-          });
-          navigate("/doctor-dashboard");
-        } else {
-          toast({
-            title: "Registration successful",
-            description: "Your account has been created. Please log in.",
-          });
-          setIsSignUp(false);
-        }
-        
-      } catch (error) {
-        console.error("Doctor registration error:", error);
+
+        // If insert was successful
         toast({
-          title: "Registration failed",
+          title: "Signup successful",
+          description: "Doctor account created. Please log in.",
+        });
+        // Optionally log the user in automatically or switch view
+        setIsSignUp(false); // Switch back to login view after successful signup
+
+      } catch (error) {
+        console.error("Doctor signup unexpected error:", error);
+        toast({
+          title: "Signup failed",
           description: "An unexpected error occurred. Please try again.",
-          variant: "destructive"
+          variant: "destructive",
         });
       } finally {
         setLoading(false);
