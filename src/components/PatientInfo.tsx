@@ -2,21 +2,18 @@
 import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { FileText, Plus } from 'lucide-react';
 import { Patient } from '@/types/patient';
 
 interface PatientInfoProps {
   patient: Patient;
   isReadOnly?: boolean;
-  onAddMedication?: () => void;
   onAddHistory?: () => void;
 }
 
 const PatientInfo = ({ 
   patient, 
   isReadOnly = true,
-  onAddMedication,
   onAddHistory
 }: PatientInfoProps) => {
   const [showHistory, setShowHistory] = useState(false);
@@ -63,58 +60,6 @@ const PatientInfo = ({
             </div>
           </div>
         </CardHeader>
-      </Card>
-
-      {/* Current conditions */}
-      <Card>
-        <CardHeader className="py-4 flex flex-row justify-between items-center">
-          <CardTitle className="text-xl text-primary">Current Medications</CardTitle>
-          {!isReadOnly && (
-            <Button variant="outline" size="sm" onClick={onAddMedication}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Medication
-            </Button>
-          )}
-        </CardHeader>
-        <CardContent>
-          {patient.currentConditions.length > 0 ? (
-            <div className="divide-y divide-border">
-              {patient.currentConditions.map((condition, index) => (
-                <div key={index} className="py-3">
-                  <div className="flex flex-wrap justify-between items-start">
-                    <div>
-                      <h4 className="font-medium">{condition.name}</h4>
-                      <p className="text-sm text-muted-foreground">Since {condition.since}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-muted-foreground mb-1">Dosage</p>
-                      <div className="flex flex-wrap justify-end gap-1">
-                        {condition.medications.map((med, idx) => (
-                          <span key={idx} className="text-xs px-2 py-1 rounded-full bg-muted">
-                            {med}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              {!isReadOnly ? (
-                <div className="bg-muted p-6 rounded-md">
-                  <p className="text-muted-foreground">No medications recorded yet</p>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Add medications using the button above
-                  </p>
-                </div>
-              ) : (
-                <p className="text-muted-foreground">No current medications</p>
-              )}
-            </div>
-          )}
-        </CardContent>
       </Card>
 
       {/* Medical history toggle button */}
