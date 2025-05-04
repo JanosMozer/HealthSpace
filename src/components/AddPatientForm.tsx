@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -112,18 +111,18 @@ const AddPatientForm = () => {
               variant: "destructive"
             });
           } else {
-            throw error;
+             console.error("Error creating patient:", error);
+             toast({
+               title: "Error",
+               description: "Failed to create patient profile. Please try again.",
+               variant: "destructive"
+             });
+            // throw error; // Re-throwing might be appropriate depending on desired flow
           }
-          
-          // For demo purposes, navigate to the profile even if DB save failed
-          toast({
-            title: "Demo mode activated",
-            description: "Created patient profile in demo mode (data not saved to database).",
-          });
-          navigate(`/patient-profile/${formData.patientId}`);
-          return;
+          setIsSubmitting(false); // Ensure button is re-enabled on error
+          return; // Stop execution if there was an error
         }
-        
+
         toast({
           title: "Patient profile created",
           description: `Patient ID: ${formData.patientId}`,

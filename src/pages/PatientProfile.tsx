@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import PatientInfo from '@/components/PatientInfo';
@@ -88,39 +87,15 @@ const PatientProfile = () => {
         
         if (!patientsData || patientsData.length === 0) {
           console.error('No patient found with identifier:', patientId);
-          
-          // For demonstration purposes - create a dummy patient if none exists
-          if (isDoctor) {
-            const dummyPatient = {
-              name: patientId || "Demo Patient",
-              identifier: patientId || "000000000",
-              dob: "1990-01-01",
-              gender: "Not Specified",
-              age: 33
-            };
-            
-            setPatient({
-              ...patient,
-              ...dummyPatient
-            });
-            
-            toast({
-              title: "Demo Mode",
-              description: "Using sample patient data. Database connection may not be fully set up.",
-            });
-            
-            setLoading(false);
-            return;
-          } else {
-            toast({
-              title: "Not Found",
-              description: "Patient record not found",
-              variant: "destructive"
-            });
-            return;
-          }
+          toast({
+            title: "Not Found",
+            description: "Patient record not found",
+            variant: "destructive"
+          });
+          setLoading(false); // Ensure loading stops if patient not found
+          return;
         }
-        
+
         // Use the first patient found
         const patientData = patientsData[0];
         console.log("Patient data retrieved:", patientData);
@@ -247,6 +222,36 @@ const PatientProfile = () => {
           isReadOnly={!isDoctor} 
           onAddHistory={() => setIsAddingHistoryRecord(true)}
         />
+
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-3xl font-bold text-primary">{patient.name}</h1>
+            <p className="text-lg text-muted-foreground">ID: {patient.identifier}</p> {/* Moved ID below name */}
+            <p className="text-sm text-muted-foreground">
+              {patient.age} years old ({patient.gender}), DOB: {new Date(patient.dob).toLocaleDateString()}
+            </p>
+          </div>
+          {isDoctor && (
+            <AddDataDialog
+              patient={patient}
+              setPatient={setPatient}
+              selectedBodyPart={selectedBodyPart}
+              setSelectedBodyPart={setSelectedBodyPart}
+            />
+          )}
+        </div>
+
+        {/* Patient Canvas and Details */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* ... Patient Canvas ... */}
+
+          {/* Patient Details Column */}
+          <div className="md:col-span-1 space-y-6">
+            <CurrentConditions conditions={patient.currentConditions} />
+            <Medications medications={patient.currentConditions} /> {/* Assuming medications are part of currentConditions structure */}
+            {/* <MedicalHistory history={patient.medicalHistory} /> */} {/* Commented out Medical History */}
+          </div>
+        </div>
         
         {/* Tabbed sections with pictograms */}
         <div className="mt-8">
