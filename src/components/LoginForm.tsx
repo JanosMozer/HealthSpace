@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -78,6 +77,19 @@ const LoginForm = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDoctorSignup = async () => {
+    // ... validation ...
+    try {
+      console.log('Using Supabase client for signup:', supabase); // Add this line
+      const { data, error } = await supabase
+        .from('doctors')
+        .insert([{ name: doctorName, password: doctorPassword }])
+        .select();
+    } catch (error) {
+      console.error("Doctor signup error:", error);
     }
   };
 
