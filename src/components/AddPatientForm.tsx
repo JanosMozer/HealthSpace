@@ -5,14 +5,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from '@/lib/supabase';
 
 const AddPatientForm = () => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     dob: '',
+    gender: 'Not Specified',
     profileType: 'patient',
     patientId: generateRandomId(),
   });
@@ -33,54 +36,110 @@ const AddPatientForm = () => {
   const handleProfileTypeChange = (value: string) => {
     setFormData(prev => ({ ...prev, profileType: value }));
   };
+  
+  const handleGenderChange = (value: string) => {
+    setFormData(prev => ({ ...prev, gender: value }));
+  };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const calculateAge = (dobString: string): number => {
+    const dob = new Date(dobString);
+    const today = new Date();
+    let age = today.getFullYear() - dob.getFullYear();
+    const monthDiff = today.getMonth() - dob.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+      age--;
+    }
+    
+    return age;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      toast({
-        title: "Profile created successfully",
-        description: formData.profileType === 'patient' 
-          ? `Patient ID: ${formData.patientId}` 
-          : `Doctor account created for ${formData.email}`,
-      });
-      
-      if (formData.profileType === 'patient') {
+    if (formData.profileType === 'patient') {
+      try {
+        // Calculate age from DOB
+        const age = calculateAge(formData.dob);
+        
+        // Insert into Supabase
+        const { data, error } = await supabase
+          .from('patients')
+          .insert({
+            identifier: formData.patientId,
+            name: formData.name,
+            dob: formData.dob,
+            gender: formData.gender,
+            age: age
+          })
+          .select();
+          
+        console.log("Patient creation result:", { data, error });
+        
+        if (error) {
+          throw error;
+        }
+        
+        toast({
+          title: "Patient profile created",
+          description: `Patient ID: ${formData.patientId}`,
+        });
+        
+        // Navigate to the patient profile
         navigate(`/patient-profile/${formData.patientId}`);
-      } else {
-        // In a real app, you might redirect to a different page or show additional info
+      } catch (error) {
+        console.error("Error creating patient:", error);
+        toast({
+          title: "Error",
+          description: "Failed to create patient profile. Please try again.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsSubmitting(false);
       }
-      setIsSubmitting(false);
-    }, 1000);
+    } else {
+      // Handle doctor creation (not modifying this functionality)
+      setTimeout(() => {
+        toast({
+          title: "Profile created successfully",
+          description: `Doctor account created for ${formData.email}`,
+        });
+        
+        setIsSubmitting(false);
+      }, 1000);
+    }
   };
 
   return (
     <div className="space-y-4">
       <DialogHeader>
-        <DialogTitle>Create New Profile</DialogTitle>
+        <DialogTitle>Create New {formData.profileType === 'patient' ? 'Patient' : 'Doctor'}</DialogTitle>
         <DialogDescription>
-          Add a new doctor or patient to the system.
+          {formData.profileType === 'patient' 
+            ? 'Add a new patient to the system.' 
+            : 'Add a new doctor to the system.'}
         </DialogDescription>
       </DialogHeader>
       
       <form onSubmit={handleSubmit} className="space-y-4 pt-4">
-        <RadioGroup
-          defaultValue="patient"
-          value={formData.profileType}
-          onValueChange={handleProfileTypeChange}
-          className="flex space-x-4"
-        >
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="patient" id="patient" />
-            <Label htmlFor="patient">Patient</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="doctor" id="doctor" />
-            <Label htmlFor="doctor">Doctor</Label>
-          </div>
-        </RadioGroup>
+        {formData.profileType === 'patient' ? null : (
+          <RadioGroup
+            defaultValue="patient"
+            value={formData.profileType}
+            onValueChange={handleProfileTypeChange}
+            className="flex space-x-4"
+          >
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="patient" id="patient" />
+              <Label htmlFor="patient">Patient</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="doctor" id="doctor" />
+              <Label htmlFor="doctor">Doctor</Label>
+            </div>
+          </RadioGroup>
+        )}
 
         <div className="space-y-2">
           <Label htmlFor="name">Full Name</Label>
@@ -104,6 +163,26 @@ const AddPatientForm = () => {
             required
           />
         </div>
+        
+        {formData.profileType === 'patient' && (
+          <div className="space-y-2">
+            <Label htmlFor="gender">Gender</Label>
+            <Select
+              value={formData.gender}
+              onValueChange={handleGenderChange}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select gender" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Male">Male</SelectItem>
+                <SelectItem value="Female">Female</SelectItem>
+                <SelectItem value="Non-binary">Non-binary</SelectItem>
+                <SelectItem value="Not Specified">Not Specified</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         {formData.profileType === 'doctor' && (
           <div className="space-y-2">
@@ -142,7 +221,7 @@ const AddPatientForm = () => {
             className="bg-medical-secondary hover:bg-medical-accent" 
             disabled={isSubmitting}
           >
-            {isSubmitting ? "Creating..." : "Create Profile"}
+            {isSubmitting ? "Creating..." : `Create ${formData.profileType === 'patient' ? 'Patient' : 'Doctor'}`}
           </Button>
         </div>
       </form>

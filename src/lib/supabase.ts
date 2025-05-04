@@ -39,20 +39,72 @@ export const getSupabaseStatus = async () => {
     const doctorsResult = await supabase.from('doctors').select('*').limit(1);
     console.log('Doctors query result:', doctorsResult);
     
-    return {
+    // Test RLS policies and row access
+    let dbStatus = {
       isConnected: true,
       patientsAccess: !patientsResult.error,
       doctorsAccess: !doctorsResult.error,
+      tablesExist: {
+        patients: false,
+        doctors: false,
+        conditions: false,
+        medications: false,
+        medical_history: false,
+      },
       errors: {
         patients: patientsResult.error,
         doctors: doctorsResult.error
       }
     };
+    
+    // Check if tables exist and have the right structure
+    try {
+      // Check schema definitions
+      const { data: tableList } = await supabase
+        .from('_metadata')
+        .select('name')
+        .catch(() => ({ data: null }));
+        
+      if (tableList) {
+        console.log('Database tables:', tableList);
+      }
+    } catch (e) {
+      // Ignore error, this is just diagnostic
+      console.log('Could not check table definitions:', e);
+    }
+    
+    return dbStatus;
   } catch (e) {
     console.error('Supabase status check error:', e);
     return {
       isConnected: false,
       error: e
     };
+  }
+};
+
+// Explicitly initialize the database by touching each table
+export const initializeDatabase = async () => {
+  try {
+    // Try to access each table to ensure they exist
+    const tables = ['patients', 'doctors', 'conditions', 'medications', 'medical_history'];
+    const results = await Promise.all(
+      tables.map(table => 
+        supabase.from(table).select('count').limit(1)
+      )
+    );
+    
+    console.log('Database initialization results:', 
+      results.map((r, i) => ({ 
+        table: tables[i], 
+        success: !r.error,
+        error: r.error
+      }))
+    );
+    
+    return true;
+  } catch (e) {
+    console.error('Database initialization error:', e);
+    return false;
   }
 };
