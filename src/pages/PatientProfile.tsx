@@ -2,8 +2,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import BodyDiagram from '@/components/BodyDiagram';
 import PatientInfo from '@/components/PatientInfo';
+import PatientTabs from '@/components/PatientTabs';
 import { ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogTrigger, DialogContent, DialogTitle, DialogHeader } from '@/components/ui/dialog';
@@ -65,6 +65,8 @@ const PatientProfile = () => {
       if (!patientId) return;
       
       try {
+        console.log("Fetching patient with ID:", patientId);
+        
         // Fetch basic patient info
         const { data: patientData, error: patientError } = await supabase
           .from('patients')
@@ -72,7 +74,7 @@ const PatientProfile = () => {
           .eq('identifier', patientId)
           .single();
         
-        if (patientError || !patientData) {
+        if (patientError) {
           console.error('Error fetching patient:', patientError);
           toast({
             title: "Error",
@@ -82,24 +84,54 @@ const PatientProfile = () => {
           return;
         }
         
+        if (!patientData) {
+          console.error('No patient found with identifier:', patientId);
+          toast({
+            title: "Error",
+            description: "Patient not found",
+            variant: "destructive"
+          });
+          return;
+        }
+        
+        console.log("Patient data retrieved:", patientData);
+        
         // Fetch conditions
-        const { data: conditionsData } = await supabase
+        const { data: conditionsData, error: conditionsError } = await supabase
           .from('conditions')
           .select('*')
           .eq('patient_id', patientData.id);
         
+        if (conditionsError) {
+          console.error('Error fetching conditions:', conditionsError);
+        }
+        
+        console.log("Conditions data:", conditionsData);
+        
         // Fetch medications
-        const { data: medicationsData } = await supabase
+        const { data: medicationsData, error: medicationsError } = await supabase
           .from('medications')
           .select('*')
           .eq('patient_id', patientData.id);
         
+        if (medicationsError) {
+          console.error('Error fetching medications:', medicationsError);
+        }
+        
+        console.log("Medications data:", medicationsData);
+        
         // Fetch medical history
-        const { data: historyData } = await supabase
+        const { data: historyData, error: historyError } = await supabase
           .from('medical_history')
           .select('*')
           .eq('patient_id', patientData.id)
           .order('date', { ascending: false });
+        
+        if (historyError) {
+          console.error('Error fetching medical history:', historyError);
+        }
+        
+        console.log("History data:", historyData);
         
         // Calculate age from DOB
         const birthDate = new Date(patientData.dob);
@@ -338,7 +370,7 @@ const PatientProfile = () => {
   return (
     <div className="min-h-screen bg-white">
       <header className="border-b border-border bg-primary">
-        <div className="medical-container flex h-16 items-center">
+        <div className="container max-w-7xl mx-auto flex h-16 items-center px-4">
           <Button 
             variant="ghost" 
             size="icon" 
@@ -351,42 +383,17 @@ const PatientProfile = () => {
         </div>
       </header>
       
-      <main className="medical-container py-8">
-        <div className="grid md:grid-cols-3 gap-8">
-          {/* Patient body diagram (right side) */}
-          <div className="order-2 md:order-2 md:col-span-1">
-            <div className="sticky top-8">
-              <h2 className="text-xl font-bold mb-4 text-primary">Body Diagram</h2>
-              <div className="bg-white border border-border rounded-lg p-4 shadow-sm">
-                <BodyDiagram 
-                  conditions={patient.bodyConditions} 
-                  onAddCondition={isDoctor ? handleAddCondition : undefined} 
-                  readOnly={!isDoctor}
-                />
-                
-                {isDoctor && (
-                  <div className="mt-4 text-center">
-                    <p className="text-xs text-muted-foreground mb-2">
-                      {patient.bodyConditions.length > 0 
-                        ? "Click on an organ to add new conditions" 
-                        : "Click on an organ to add a condition"}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-          
-          {/* Patient information (left side) */}
-          <div className="order-1 md:order-1 md:col-span-2">
-            <PatientInfo 
-              patient={patient} 
-              isReadOnly={!isDoctor} 
-              onAddMedication={() => setIsAddingMedication(true)}
-              onAddHistory={() => setIsAddingHistoryRecord(true)}
-            />
-          </div>
-        </div>
+      <main className="container max-w-7xl mx-auto py-8 px-4">
+        {/* Patient information */}
+        <PatientInfo 
+          patient={patient} 
+          isReadOnly={!isDoctor} 
+          onAddMedication={() => setIsAddingMedication(true)}
+          onAddHistory={() => setIsAddingHistoryRecord(true)}
+        />
+        
+        {/* Tabbed sections with pictograms */}
+        <PatientTabs patient={patient} isDoctor={isDoctor} />
       </main>
       
       {/* Dialog for adding conditions */}

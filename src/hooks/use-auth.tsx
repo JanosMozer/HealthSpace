@@ -46,7 +46,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (identifier: string, password: string) => {
     // Admin hardcoded account
-    if (identifier === 'admin' && password === '3581') {
+    if ((identifier === 'admin' || identifier === 'admin@hospital.com') && password === '3581') {
       const adminDoctor = {
         id: 'admin',
         email: 'admin@hospital.com',
@@ -64,13 +64,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     // Regular doctor login via Supabase
     try {
+      // Try to find doctor by identifier or email
       const { data, error } = await supabase
         .from('doctors')
         .select('*')
-        .eq('identifier', identifier)
+        .or(`identifier.eq.${identifier},email.eq.${identifier}`)
         .single();
       
       if (error || !data) {
+        console.log('Error or no data found:', error);
         return { success: false, message: 'Doctor not found' };
       }
       
