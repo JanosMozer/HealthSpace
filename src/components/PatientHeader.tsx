@@ -5,9 +5,10 @@ import { useNavigate } from 'react-router-dom';
 
 interface PatientHeaderProps {
   connectionStatus: any;
+  patientName?: string;
 }
 
-const PatientHeader = ({ connectionStatus }: PatientHeaderProps) => {
+const PatientHeader = ({ connectionStatus, patientName = 'Patient Profile' }: PatientHeaderProps) => {
   const navigate = useNavigate();
 
   return (
@@ -22,7 +23,7 @@ const PatientHeader = ({ connectionStatus }: PatientHeaderProps) => {
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-lg font-bold text-white">Patient Profile</h1>
+          <h1 className="text-lg font-bold text-white">{patientName}</h1>
         </div>
       </header>
 

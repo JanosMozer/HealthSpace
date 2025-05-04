@@ -4,14 +4,21 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { CalendarDays, Pill, Image, FileText } from 'lucide-react';
 import BodyDiagram from './BodyDiagram';
-import { Patient } from '@/types/patient';
+import { BodyPart, Patient } from '@/types/patient';
 
 interface PatientTabsProps {
   patient: Patient;
   isDoctor: boolean;
+  onAddCondition?: (bodyPart: BodyPart) => void;
+  onAddMedication?: () => void;
 }
 
-const PatientTabs: React.FC<PatientTabsProps> = ({ patient, isDoctor }) => {
+const PatientTabs: React.FC<PatientTabsProps> = ({ 
+  patient, 
+  isDoctor, 
+  onAddCondition,
+  onAddMedication 
+}) => {
   return (
     <Card className="mt-6">
       <Tabs defaultValue="appointments" className="w-full">
@@ -36,7 +43,6 @@ const PatientTabs: React.FC<PatientTabsProps> = ({ patient, isDoctor }) => {
             value="bodyDiagram" 
             className="flex flex-col items-center py-4 gap-2 data-[state=active]:bg-primary/10"
           >
-            {/* Replaced Body with FileText as a temporary icon for the body diagram */}
             <FileText className="h-5 w-5" />
             <span className="text-xs font-medium">Body Diagram</span>
           </TabsTrigger>
@@ -120,7 +126,7 @@ const PatientTabs: React.FC<PatientTabsProps> = ({ patient, isDoctor }) => {
             <div className="bg-white border border-border rounded-lg p-4 shadow-sm">
               <BodyDiagram 
                 conditions={patient.bodyConditions} 
-                onAddCondition={isDoctor ? undefined : undefined} 
+                onAddCondition={isDoctor ? onAddCondition : undefined} 
                 readOnly={!isDoctor}
               />
             </div>

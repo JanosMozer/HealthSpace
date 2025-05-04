@@ -92,8 +92,8 @@ const PatientProfile = () => {
           // For demonstration purposes - create a dummy patient if none exists
           if (isDoctor) {
             const dummyPatient = {
-              name: patientId,
-              identifier: patientId,
+              name: patientId || "Demo Patient",
+              identifier: patientId || "000000000",
               dob: "1990-01-01",
               gender: "Not Specified",
               age: 33
@@ -205,7 +205,7 @@ const PatientProfile = () => {
     };
     
     fetchPatient();
-  }, [patientId, toast, patient.id, isDoctor]);
+  }, [patientId, toast, isDoctor]);
 
   // Handler for body part selection
   const handleAddCondition = (bodyPart: BodyPart) => {
@@ -213,6 +213,12 @@ const PatientProfile = () => {
     
     setSelectedBodyPart(bodyPart);
     setIsEditingCondition(true);
+  };
+  
+  // Handler for adding medication
+  const handleAddMedication = () => {
+    if (!isDoctor) return;
+    setIsAddingMedication(true);
   };
 
   // Loading state
@@ -229,7 +235,10 @@ const PatientProfile = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      <PatientHeader connectionStatus={connectionStatus} />
+      <PatientHeader 
+        connectionStatus={connectionStatus} 
+        patientName={patient.name || 'Patient Profile'}
+      />
       
       <main className="container max-w-7xl mx-auto py-8 px-4">
         {/* Patient information */}
@@ -245,7 +254,7 @@ const PatientProfile = () => {
             patient={patient} 
             isDoctor={isDoctor} 
             onAddCondition={handleAddCondition} 
-            onAddMedication={() => setIsAddingMedication(true)}
+            onAddMedication={handleAddMedication}
           />
         </div>
       </main>

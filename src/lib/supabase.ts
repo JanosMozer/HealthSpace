@@ -59,11 +59,10 @@ export const getSupabaseStatus = async () => {
     
     // Check if tables exist and have the right structure
     try {
-      // Check schema definitions
+      // Check schema definitions - removing the catch that was causing the error
       const { data: tableList } = await supabase
         .from('_metadata')
-        .select('name')
-        .catch(() => ({ data: null }));
+        .select('name');
         
       if (tableList) {
         console.log('Database tables:', tableList);
@@ -102,9 +101,36 @@ export const initializeDatabase = async () => {
       }))
     );
     
+    // Get RLS policy info
+    try {
+      const { data: rlsData, error: rlsError } = await supabase.rpc('get_policies');
+      if (!rlsError && rlsData) {
+        console.log('RLS policies:', rlsData);
+      } else {
+        console.error('Could not check RLS policies:', rlsError);
+      }
+    } catch (e) {
+      console.log('RLS policy check failed:', e);
+    }
+    
     return true;
   } catch (e) {
     console.error('Database initialization error:', e);
     return false;
   }
+};
+
+// Check auth status to see if we have permissions
+export const checkAuthStatus = async () => {
+  const { data: authData } = await supabase.auth.getSession();
+  console.log('Auth status:', authData);
+  
+  return authData;
+};
+
+// Enable debug mode with service role for development
+export const enableServiceRole = async () => {
+  console.log('WARNING: Attempting to bypass RLS with service role for development');
+  // This is just for debugging purposes - would require a service role key in production
+  return false;
 };
