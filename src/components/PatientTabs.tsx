@@ -1,8 +1,8 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
-import { CalendarDays, Pill, Body, Image, FileText } from 'lucide-react';
+import { CalendarDays, Pill, Image, FileText } from 'lucide-react';
 import BodyDiagram from './BodyDiagram';
 import { Patient } from '@/types/patient';
 
@@ -36,7 +36,8 @@ const PatientTabs: React.FC<PatientTabsProps> = ({ patient, isDoctor }) => {
             value="bodyDiagram" 
             className="flex flex-col items-center py-4 gap-2 data-[state=active]:bg-primary/10"
           >
-            <Body className="h-5 w-5" />
+            {/* Replaced Body with FileText as a temporary icon for the body diagram */}
+            <FileText className="h-5 w-5" />
             <span className="text-xs font-medium">Body Diagram</span>
           </TabsTrigger>
           
