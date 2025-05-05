@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -9,11 +8,20 @@ import AddPatientForm from './AddPatientForm';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from "@/components/ui/skeleton";
-import debounce from 'lodash.debounce'; 
+import { debounce } from 'lodash';
+
+// Define an interface for the patient data including gender
+interface PatientSearchResult {
+  id: string;
+  identifier: string;
+  name: string;
+  dob: string;
+  gender: string; // Added gender
+}
 
 const PatientSearch = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<PatientSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isAddingPatient, setIsAddingPatient] = useState(false);
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
@@ -34,92 +42,110 @@ const PatientSearch = () => {
 
   // Trigger search when debounced search term changes
   useEffect(() => {
-    if (debouncedSearchTerm) {
-      performSearch(debouncedSearchTerm);
+    if (debouncedSearchTerm.trim()) {
+      performSearch(debouncedSearchTerm.trim());
     } else {
       setSearchResults([]);
+      setIsSearching(false);
     }
   }, [debouncedSearchTerm]);
 
   const performSearch = async (query: string) => {
-    if (!query.trim()) {
-      setSearchResults([]);
-      return;
-    }
-    
+    console.log(`Performing search for: "${query}"`);
     setIsSearching(true);
+    setSearchResults([]); // Clear previous results
+
+    let results: PatientSearchResult[] = [];
+    let searchError: any = null;
 
     try {
-      // Search by ID
-      const { data: patientsById, error: errorById } = await supabase
-        .from('patients')
-        .select('*')
-        .ilike('identifier', `${query}%`)
-        .limit(10);
-      
-      if (errorById) throw errorById;
+      // Check if the query starts with a digit
+      const startsWithDigit = /^\d/.test(query);
 
-      // Search by name
-      const { data: patientsByName, error: errorByName } = await supabase
-        .from('patients')
-        .select('*')
-        .ilike('name', `%${query}%`)
-        .limit(10);
-          
-      if (errorByName) throw errorByName;
-      
-      // Combine results, remove duplicates
-      let combinedResults = [...(patientsById || [])];
-      
-      if (patientsByName) {
-        patientsByName.forEach(nameResult => {
-          if (!combinedResults.find(p => p.id === nameResult.id)) {
-            combinedResults.push(nameResult);
+      if (startsWithDigit && query.length <= 9) { // Ensure query isn't longer than 9 digits
+        // Search by ID using numeric range
+        console.log(`Searching by identifier starting with: ${query}`);
+
+        // Calculate the lower bound (e.g., "123" -> 123000000)
+        const lowerBoundString = query.padEnd(9, '0');
+        const lowerBound = parseInt(lowerBoundString, 10);
+
+        // Calculate the upper bound (e.g., "123" -> 124000000)
+        // Increment the query as a number, then pad
+        const nextNumber = parseInt(query, 10) + 1;
+        const upperBoundString = String(nextNumber).padEnd(9, '0');
+        const upperBound = parseInt(upperBoundString, 10);
+
+        // Handle potential edge case where query is already 9 digits
+        // or if parsing/calculation results in NaN
+        if (!isNaN(lowerBound) && !isNaN(upperBound)) {
+          console.log(`Numeric range: >= ${lowerBound}, < ${upperBound}`);
+          const { data, error } = await supabase
+            .from('patients')
+            .select('id, identifier, name, dob, gender')
+            // Use greater than or equal to for the lower bound
+            .gte('identifier', lowerBound)
+            // Use less than for the upper bound
+            .lt('identifier', upperBound)
+            .limit(10);
+
+          if (error) {
+            console.error('Error searching by ID range:', error);
+            searchError = error;
+          } else {
+            console.log(`Found ${data?.length || 0} patients by ID range.`);
+            results = data || [];
           }
+        } else {
+           console.warn("Could not calculate valid numeric bounds for ID search.");
+           // Proceed without ID results if bounds are invalid
+        }
+
+      } else if (!startsWithDigit) {
+        // Search by name only (no changes here)
+        console.log(`Searching by name containing: ${query}`);
+        const { data, error } = await supabase
+          .from('patients')
+          .select('id, identifier, name, dob, gender')
+          .ilike('name', `%${query}%`)
+          .limit(10);
+
+        if (error) {
+          console.error('Error searching by name:', error);
+          searchError = error;
+        } else {
+          console.log(`Found ${data?.length || 0} patients by name.`);
+          results = data || [];
+        }
+      }
+      // If query starts with digit but is > 9 digits, results will be empty
+
+      // Handle results or errors (remains the same)
+      if (searchError) {
+        toast({
+          title: "Search Error",
+          description: searchError.message || "Failed to fetch patient data.",
+          variant: "destructive"
         });
-      }
-      
-      // Format results to include conditions
-      if (combinedResults.length > 0) {
-        // For each patient, fetch their conditions
-        const patientsWithConditions = await Promise.all(
-          combinedResults.map(async (patient) => {
-            const { data: conditions } = await supabase
-              .from('conditions')
-              .select('description')
-              .eq('patient_id', patient.id);
-              
-            return {
-              ...patient,
-              conditions: conditions 
-                ? conditions.map(c => c.description) 
-                : []
-            };
-          })
-        );
-        
-        setSearchResults(patientsWithConditions);
-      } else {
         setSearchResults([]);
+      } else {
+        console.log(`Setting search results: ${results.length} patients.`);
+        setSearchResults(results);
       }
+
     } catch (error) {
-      console.error('Error searching for patients:', error);
+      // Catch unexpected errors (remains the same)
+      console.error('Unexpected error during patient search:', error);
       toast({
-        title: "Error",
-        description: "Failed to search for patients",
+        title: "Search Error",
+        description: "An unexpected error occurred during the search.",
         variant: "destructive"
       });
-      
-      // Reset search results on error
       setSearchResults([]);
     } finally {
       setIsSearching(false);
+      console.log('Search finished.');
     }
-  };
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    performSearch(searchQuery);
   };
 
   const viewPatient = (patientId: string) => {
@@ -127,17 +153,17 @@ const PatientSearch = () => {
   };
 
   const renderSearchResults = () => {
-    if (isSearching) {
+    if (isSearching && searchResults.length === 0 && debouncedSearchTerm) {
       return (
         <div className="rounded-md border border-border animate-fade-in">
           <table className="w-full">
             <thead className="bg-muted">
               <tr>
-                <th className="px-4 py-3 text-left text-sm font-medium">Patient ID</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">Name</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">Date of Birth</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">Conditions</th>
-                <th className="px-4 py-3 text-right text-sm font-medium">Actions</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Patient ID</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Name</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Date of Birth</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Gender</th>
+                <th className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -146,7 +172,7 @@ const PatientSearch = () => {
                   <td className="px-4 py-3"><Skeleton className="h-5 w-24" /></td>
                   <td className="px-4 py-3"><Skeleton className="h-5 w-32" /></td>
                   <td className="px-4 py-3"><Skeleton className="h-5 w-28" /></td>
-                  <td className="px-4 py-3"><Skeleton className="h-5 w-40" /></td>
+                  <td className="px-4 py-3"><Skeleton className="h-5 w-20" /></td>
                   <td className="px-4 py-3 text-right">
                     <Skeleton className="h-9 w-20 ml-auto" />
                   </td>
@@ -164,29 +190,25 @@ const PatientSearch = () => {
           <table className="w-full">
             <thead className="bg-muted">
               <tr>
-                <th className="px-4 py-3 text-left text-sm font-medium">Patient ID</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">Name</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">Date of Birth</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">Conditions</th>
-                <th className="px-4 py-3 text-right text-sm font-medium">Actions</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Patient ID</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Name</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Date of Birth</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Gender</th>
+                <th className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {searchResults.map((patient) => (
                 <tr key={patient.id || patient.identifier}>
-                  <td className="px-4 py-3 text-sm">{patient.identifier || patient.id}</td>
+                  <td className="px-4 py-3 text-sm">{patient.identifier}</td>
                   <td className="px-4 py-3 text-sm font-medium">{patient.name}</td>
                   <td className="px-4 py-3 text-sm">{patient.dob}</td>
-                  <td className="px-4 py-3 text-sm">
-                    {patient.conditions && patient.conditions.length > 0
-                      ? patient.conditions.join(', ')
-                      : 'None recorded'}
-                  </td>
+                  <td className="px-4 py-3 text-sm">{patient.gender || 'N/A'}</td>
                   <td className="px-4 py-3 text-right">
-                    <Button 
+                    <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => viewPatient(patient.identifier || patient.id)}
+                      onClick={() => viewPatient(patient.identifier)}
                     >
                       <User className="h-4 w-4 mr-2" />
                       View
@@ -198,14 +220,14 @@ const PatientSearch = () => {
           </table>
         </div>
       );
-    } else if (debouncedSearchTerm && !isSearching) {
+    } else if (debouncedSearchTerm && !isSearching && searchResults.length === 0) {
       return (
         <div className="rounded-md border border-border p-8 text-center animate-fade-in">
           <p className="text-muted-foreground">No patients found matching "{debouncedSearchTerm}"</p>
         </div>
       );
     }
-    
+
     return null;
   };
 
