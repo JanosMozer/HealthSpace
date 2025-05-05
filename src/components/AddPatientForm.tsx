@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react'; // Added useEffect
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,9 +21,19 @@ const AddPatientForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<boolean | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  
+  const [today, setToday] = useState('');
+
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Get today's date in YYYY-MM-DD format on component mount
+  useEffect(() => {
+    const date = new Date();
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0'); // Months are 0-indexed
+    const day = date.getDate().toString().padStart(2, '0');
+    setToday(`${year}-${month}-${day}`);
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -139,6 +148,20 @@ const AddPatientForm = () => {
       return;
     }
     
+    // Add specific check for DOB being in the future
+    if (formData.dob > today && today) { // Check against today's date string
+       setErrors(prev => ({
+        ...prev,
+        dob: 'Date of birth cannot be in the future'
+      }));
+      toast({
+        title: "Validation Error",
+        description: "Date of birth cannot be in the future",
+        variant: "destructive"
+      });
+      return;
+    }
+
     // Additional check for patient ID format
     if (formData.patientId.length !== 9) {
       setErrors(prev => ({
@@ -265,6 +288,7 @@ const AddPatientForm = () => {
             onChange={handleInputChange}
             className={errors.dob ? 'border-red-500 focus-visible:ring-red-500' : ''}
             required
+            max={today} // Add the max attribute here
           />
           {errors.dob && <p className="text-xs text-red-500">{errors.dob}</p>}
         </div>
