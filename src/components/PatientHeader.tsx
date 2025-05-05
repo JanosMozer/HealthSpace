@@ -11,15 +11,21 @@ interface PatientHeaderProps {
 
 const PatientHeader = ({ connectionStatus, patientName = 'Patient Profile' }: PatientHeaderProps) => {
   const navigate = useNavigate();
-  const { logout } = useAuth();
-  const userType = sessionStorage.getItem('userType');
+  const { logout, isDoctor } = useAuth();
 
   const handleBack = () => {
-    if (userType === 'doctor') {
+    if (isDoctor) {
       navigate('/doctor-dashboard');
     } else {
-      logout();
+      navigate('/');
     }
+  };
+
+  const handleLogout = () => {
+    logout();
+    // For doctors, we'll redirect to the login page but with a message
+    // that they can log back in. For patients, just go to the main login page.
+    navigate('/');
   };
 
   return (
@@ -41,7 +47,7 @@ const PatientHeader = ({ connectionStatus, patientName = 'Patient Profile' }: Pa
           <Button 
             variant="ghost" 
             size="icon" 
-            onClick={logout}
+            onClick={handleLogout}
             className="text-white hover:bg-primary/80"
           >
             <LogOut className="h-5 w-5" />

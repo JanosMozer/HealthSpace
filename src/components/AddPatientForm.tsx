@@ -21,13 +21,35 @@ const AddPatientForm = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<boolean | null>(null);
-  const [errors, setErrors] = useState<Record<string, boolean>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
   
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
+    
+    // Special validation for patient ID
+    if (name === 'patientId') {
+      // Only allow digits
+      const digitsOnly = value.replace(/\D/g, '');
+      
+      // Only update with digits and limit to 9 characters
+      setFormData(prev => ({ 
+        ...prev, 
+        [name]: digitsOnly.substring(0, 9) 
+      }));
+      
+      // Clear error when field is modified
+      if (errors[name]) {
+        const newErrors = { ...errors };
+        delete newErrors[name];
+        setErrors(newErrors);
+      }
+      
+      return;
+    }
+    
     setFormData(prev => ({ ...prev, [name]: value }));
     
     // Clear error when field is modified
@@ -61,16 +83,23 @@ const AddPatientForm = () => {
 
   const validateField = (name: string, value: string) => {
     const newErrors = { ...errors };
-    const isEmpty = !value.trim();
     
-    if (isEmpty) {
-      newErrors[name] = true;
-    } else {
-      delete newErrors[name];
+    if (!value.trim()) {
+      newErrors[name] = `${name.charAt(0).toUpperCase() + name.slice(1)} is required`;
+      setErrors(newErrors);
+      return false;
     }
     
-    setErrors(newErrors);
-    return !isEmpty;
+    // Special validation for patient ID
+    if (name === 'patientId') {
+      if (!/^\d{9}$/.test(value)) {
+        newErrors[name] = 'Patient ID must be exactly 9 digits';
+        setErrors(newErrors);
+        return false;
+      }
+    }
+    
+    return true;
   };
 
   // Check connection on component mount
@@ -93,6 +122,9 @@ const AddPatientForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Reset errors
+    setErrors({});
+    
     // Validate all fields
     const isNameValid = validateField('name', formData.name);
     const isDobValid = validateField('dob', formData.dob);
@@ -101,7 +133,21 @@ const AddPatientForm = () => {
     if (!isNameValid || !isDobValid || !isIdValid) {
       toast({
         title: "Validation Error",
-        description: "Please fill in all required fields",
+        description: "Please fill in all required fields correctly",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Additional check for patient ID format
+    if (formData.patientId.length !== 9) {
+      setErrors(prev => ({
+        ...prev,
+        patientId: 'Patient ID must be exactly 9 digits'
+      }));
+      toast({
+        title: "Validation Error",
+        description: "Patient ID must be exactly 9 digits",
         variant: "destructive"
       });
       return;
@@ -206,7 +252,7 @@ const AddPatientForm = () => {
             className={errors.name ? 'border-red-500 focus-visible:ring-red-500' : ''}
             required
           />
-          {errors.name && <p className="text-xs text-red-500">Patient name is required</p>}
+          {errors.name && <p className="text-xs text-red-500">{errors.name}</p>}
         </div>
         
         <div className="space-y-2">
@@ -220,7 +266,7 @@ const AddPatientForm = () => {
             className={errors.dob ? 'border-red-500 focus-visible:ring-red-500' : ''}
             required
           />
-          {errors.dob && <p className="text-xs text-red-500">Date of birth is required</p>}
+          {errors.dob && <p className="text-xs text-red-500">{errors.dob}</p>}
         </div>
         
         <div className="space-y-2">
@@ -229,7 +275,7 @@ const AddPatientForm = () => {
             value={formData.gender}
             onValueChange={handleGenderChange}
           >
-            <SelectTrigger>
+            <SelectTrigger className={errors.gender ? 'border-red-500 focus-visible:ring-red-500' : ''}>
               <SelectValue placeholder="Select gender" />
             </SelectTrigger>
             <SelectContent>
@@ -239,6 +285,7 @@ const AddPatientForm = () => {
               <SelectItem value="Not Specified">Not Specified</SelectItem>
             </SelectContent>
           </Select>
+          {errors.gender && <p className="text-xs text-red-500">{errors.gender}</p>}
         </div>
 
         <div className="space-y-2">
@@ -246,13 +293,20 @@ const AddPatientForm = () => {
           <Input
             id="patientId"
             name="patientId"
-            placeholder="Enter patient ID"
+            placeholder="Enter 9-digit patient ID"
             value={formData.patientId}
             onChange={handleInputChange}
             className={errors.patientId ? 'border-red-500 focus-visible:ring-red-500' : ''}
             required
+            maxLength={9}
           />
-          {errors.patientId && <p className="text-xs text-red-500">Patient ID is required</p>}
+          {errors.patientId ? (
+            <p className="text-xs text-red-500">{errors.patientId}</p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Patient ID must be exactly 9 digits
+            </p>
+          )}
           <p className="text-xs text-muted-foreground">
             Patient will use this ID and their birth date to log in
           </p>

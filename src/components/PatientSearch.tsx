@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,29 +8,53 @@ import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import AddPatientForm from './AddPatientForm';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from "@/components/ui/skeleton";
+import debounce from 'lodash.debounce'; 
 
 const PatientSearch = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isAddingPatient, setIsAddingPatient] = useState(false);
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!searchQuery.trim()) return;
+  // Set up debounced search
+  useEffect(() => {
+    const handler = debounce(() => {
+      setDebouncedSearchTerm(searchQuery);
+    }, 300);
+
+    handler();
+    return () => {
+      handler.cancel();
+    };
+  }, [searchQuery]);
+
+  // Trigger search when debounced search term changes
+  useEffect(() => {
+    if (debouncedSearchTerm) {
+      performSearch(debouncedSearchTerm);
+    } else {
+      setSearchResults([]);
+    }
+  }, [debouncedSearchTerm]);
+
+  const performSearch = async (query: string) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
     
     setIsSearching(true);
-    setSearchResults([]);
 
     try {
       // Search by ID or name
       const { data: patientsById, error: errorById } = await supabase
         .from('patients')
         .select('*')
-        .eq('identifier', searchQuery)
+        .eq('identifier', query)
         .limit(10);
       
       if (errorById) throw errorById;
@@ -42,7 +66,7 @@ const PatientSearch = () => {
         const { data: patientsByName, error: errorByName } = await supabase
           .from('patients')
           .select('*')
-          .ilike('name', `%${searchQuery}%`)
+          .ilike('name', `%${query}%`)
           .limit(10);
           
         if (errorByName) throw errorByName;
@@ -89,8 +113,8 @@ const PatientSearch = () => {
       
       const filteredMock = mockPatients.filter(
         patient => 
-          patient.id.includes(searchQuery) || 
-          patient.name.toLowerCase().includes(searchQuery.toLowerCase())
+          patient.id.includes(query) || 
+          patient.name.toLowerCase().includes(query.toLowerCase())
       );
       
       setSearchResults(filteredMock);
@@ -104,8 +128,96 @@ const PatientSearch = () => {
     }
   };
 
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    performSearch(searchQuery);
+  };
+
   const viewPatient = (patientId: string) => {
     navigate(`/patient-profile/${patientId}`);
+  };
+
+  const renderSearchResults = () => {
+    if (isSearching) {
+      return (
+        <div className="rounded-md border border-border animate-fade-in">
+          <table className="w-full">
+            <thead className="bg-muted">
+              <tr>
+                <th className="px-4 py-3 text-left text-sm font-medium">Patient ID</th>
+                <th className="px-4 py-3 text-left text-sm font-medium">Name</th>
+                <th className="px-4 py-3 text-left text-sm font-medium">Date of Birth</th>
+                <th className="px-4 py-3 text-left text-sm font-medium">Conditions</th>
+                <th className="px-4 py-3 text-right text-sm font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {[1, 2, 3].map((_, index) => (
+                <tr key={index}>
+                  <td className="px-4 py-3"><Skeleton className="h-5 w-24" /></td>
+                  <td className="px-4 py-3"><Skeleton className="h-5 w-32" /></td>
+                  <td className="px-4 py-3"><Skeleton className="h-5 w-28" /></td>
+                  <td className="px-4 py-3"><Skeleton className="h-5 w-40" /></td>
+                  <td className="px-4 py-3 text-right">
+                    <Skeleton className="h-9 w-20 ml-auto" />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+
+    if (searchResults.length > 0) {
+      return (
+        <div className="rounded-md border border-border animate-fade-in">
+          <table className="w-full">
+            <thead className="bg-muted">
+              <tr>
+                <th className="px-4 py-3 text-left text-sm font-medium">Patient ID</th>
+                <th className="px-4 py-3 text-left text-sm font-medium">Name</th>
+                <th className="px-4 py-3 text-left text-sm font-medium">Date of Birth</th>
+                <th className="px-4 py-3 text-left text-sm font-medium">Conditions</th>
+                <th className="px-4 py-3 text-right text-sm font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {searchResults.map((patient) => (
+                <tr key={patient.id || patient.identifier}>
+                  <td className="px-4 py-3 text-sm">{patient.identifier || patient.id}</td>
+                  <td className="px-4 py-3 text-sm font-medium">{patient.name}</td>
+                  <td className="px-4 py-3 text-sm">{patient.dob}</td>
+                  <td className="px-4 py-3 text-sm">
+                    {patient.conditions && patient.conditions.length > 0
+                      ? patient.conditions.join(', ')
+                      : 'None recorded'}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <Button 
+                      variant="outline"
+                      size="sm"
+                      onClick={() => viewPatient(patient.identifier || patient.id)}
+                    >
+                      <User className="h-4 w-4 mr-2" />
+                      View
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    } else if (debouncedSearchTerm && !isSearching) {
+      return (
+        <div className="rounded-md border border-border p-8 text-center animate-fade-in">
+          <p className="text-muted-foreground">No patients found matching "{debouncedSearchTerm}"</p>
+        </div>
+      );
+    }
+    
+    return null;
   };
 
   return (
@@ -144,49 +256,7 @@ const PatientSearch = () => {
         </Button>
       </form>
 
-      {searchResults.length > 0 ? (
-        <div className="rounded-md border border-border">
-          <table className="w-full">
-            <thead className="bg-muted">
-              <tr>
-                <th className="px-4 py-3 text-left text-sm font-medium">Patient ID</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">Name</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">Date of Birth</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">Conditions</th>
-                <th className="px-4 py-3 text-right text-sm font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {searchResults.map((patient) => (
-                <tr key={patient.id || patient.identifier}>
-                  <td className="px-4 py-3 text-sm">{patient.identifier || patient.id}</td>
-                  <td className="px-4 py-3 text-sm font-medium">{patient.name}</td>
-                  <td className="px-4 py-3 text-sm">{patient.dob}</td>
-                  <td className="px-4 py-3 text-sm">
-                    {patient.conditions && patient.conditions.length > 0
-                      ? patient.conditions.join(', ')
-                      : 'None recorded'}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <Button 
-                      variant="outline"
-                      size="sm"
-                      onClick={() => viewPatient(patient.identifier || patient.id)}
-                    >
-                      <User className="h-4 w-4 mr-2" />
-                      View
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : searchQuery && !isSearching ? (
-        <div className="rounded-md border border-border p-8 text-center">
-          <p className="text-muted-foreground">No patients found matching "{searchQuery}"</p>
-        </div>
-      ) : null}
+      {renderSearchResults()}
     </div>
   );
 };
