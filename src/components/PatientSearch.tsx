@@ -62,30 +62,26 @@ const PatientSearch = () => {
       // Check if the query starts with a digit
       const startsWithDigit = /^\d/.test(query);
 
-      if (startsWithDigit && query.length <= 9) { // Ensure query isn't longer than 9 digits
-        // Search by ID using numeric range
+      if (startsWithDigit && query.length > 0 && query.length <= 9) { // Added length > 0 check
+        // Search by ID using corrected numeric range
         console.log(`Searching by identifier starting with: ${query}`);
 
         // Calculate the lower bound (e.g., "123" -> 123000000)
         const lowerBoundString = query.padEnd(9, '0');
         const lowerBound = parseInt(lowerBoundString, 10);
 
-        // Calculate the upper bound (e.g., "123" -> 124000000)
-        // Increment the query as a number, then pad
-        const nextNumber = parseInt(query, 10) + 1;
-        const upperBoundString = String(nextNumber).padEnd(9, '0');
-        const upperBound = parseInt(upperBoundString, 10);
+        // Calculate the upper bound based on query length
+        // (e.g., for "123", add 10^(9-3) = 1,000,000)
+        const power = 9 - query.length;
+        const upperBound = lowerBound + Math.pow(10, power);
 
-        // Handle potential edge case where query is already 9 digits
-        // or if parsing/calculation results in NaN
+        // Ensure calculations are valid numbers
         if (!isNaN(lowerBound) && !isNaN(upperBound)) {
           console.log(`Numeric range: >= ${lowerBound}, < ${upperBound}`);
           const { data, error } = await supabase
             .from('patients')
             .select('id, identifier, name, dob, gender')
-            // Use greater than or equal to for the lower bound
             .gte('identifier', lowerBound)
-            // Use less than for the upper bound
             .lt('identifier', upperBound)
             .limit(10);
 
@@ -101,8 +97,8 @@ const PatientSearch = () => {
            // Proceed without ID results if bounds are invalid
         }
 
-      } else if (!startsWithDigit) {
-        // Search by name only (no changes here)
+      } else if (!startsWithDigit && query.length > 0) { // Added length > 0 check
+        // Search by name only
         console.log(`Searching by name containing: ${query}`);
         const { data, error } = await supabase
           .from('patients')
@@ -118,7 +114,7 @@ const PatientSearch = () => {
           results = data || [];
         }
       }
-      // If query starts with digit but is > 9 digits, results will be empty
+      // If query is empty, or starts with digit but > 9 digits, results will be empty
 
       // Handle results or errors (remains the same)
       if (searchError) {
