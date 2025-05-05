@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -50,35 +49,40 @@ const PatientSearch = () => {
     setIsSearching(true);
 
     try {
-      // Search by ID or name
+      // Search by ID
       const { data: patientsById, error: errorById } = await supabase
         .from('patients')
         .select('*')
-        .eq('identifier', query)
+        .ilike('identifier', `${query}%`)
         .limit(10);
       
       if (errorById) throw errorById;
 
-      // If no results by ID, search by name
-      let patientsData = patientsById;
-      
-      if (patientsData?.length === 0) {
-        const { data: patientsByName, error: errorByName } = await supabase
-          .from('patients')
-          .select('*')
-          .ilike('name', `%${query}%`)
-          .limit(10);
+      // Search by name
+      const { data: patientsByName, error: errorByName } = await supabase
+        .from('patients')
+        .select('*')
+        .ilike('name', `%${query}%`)
+        .limit(10);
           
-        if (errorByName) throw errorByName;
-        
-        patientsData = patientsByName;
+      if (errorByName) throw errorByName;
+      
+      // Combine results, remove duplicates
+      let combinedResults = [...(patientsById || [])];
+      
+      if (patientsByName) {
+        patientsByName.forEach(nameResult => {
+          if (!combinedResults.find(p => p.id === nameResult.id)) {
+            combinedResults.push(nameResult);
+          }
+        });
       }
       
       // Format results to include conditions
-      if (patientsData && patientsData.length > 0) {
+      if (combinedResults.length > 0) {
         // For each patient, fetch their conditions
         const patientsWithConditions = await Promise.all(
-          patientsData.map(async (patient) => {
+          combinedResults.map(async (patient) => {
             const { data: conditions } = await supabase
               .from('conditions')
               .select('description')
@@ -106,14 +110,16 @@ const PatientSearch = () => {
       });
       
       // Fall back to mock data for demo
+      // Filter mock data based on query
       const mockPatients = [
         { id: '123456789', name: 'John Doe', dob: '1980-05-15', conditions: ['Hypertension', 'Diabetes'] },
-        { id: '987654321', name: 'Jane Smith', dob: '1975-10-22', conditions: ['Asthma'] },
+        { id: '234567890', name: 'Jane Smith', dob: '1975-10-22', conditions: ['Asthma'] },
+        { id: '345678901', name: 'Greg Johnson', dob: '1990-03-14', conditions: ['Arthritis'] },
       ];
       
       const filteredMock = mockPatients.filter(
         patient => 
-          patient.id.includes(query) || 
+          patient.id.startsWith(query) || 
           patient.name.toLowerCase().includes(query.toLowerCase())
       );
       
@@ -237,7 +243,7 @@ const PatientSearch = () => {
         </Dialog>
       </div>
 
-      <form onSubmit={handleSearch} className="flex w-full gap-2">
+      <div className="relative flex w-full gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -247,14 +253,7 @@ const PatientSearch = () => {
             className="pl-10 w-full"
           />
         </div>
-        <Button 
-          type="submit"
-          disabled={isSearching}
-          className="bg-medical-secondary hover:bg-medical-accent"
-        >
-          {isSearching ? "Searching..." : "Search"}
-        </Button>
-      </form>
+      </div>
 
       {renderSearchResults()}
     </div>
