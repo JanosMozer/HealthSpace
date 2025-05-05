@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -20,12 +21,37 @@ const LoginForm = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
   
+  // Validation states
+  const [errors, setErrors] = useState<Record<string, boolean>>({});
+  
   const navigate = useNavigate();
   const { toast } = useToast();
   const { login } = useAuth();
 
+  // Validation function
+  const validateField = (name: string, value: string) => {
+    const newErrors = { ...errors };
+    newErrors[name] = !value.trim();
+    setErrors(newErrors);
+    return !!value.trim();
+  };
+
   const handlePatientSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate required fields
+    const isIdValid = validateField('patientId', patientId);
+    const isDobValid = validateField('patientDob', patientDob);
+    
+    if (!isIdValid || !isDobValid) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required fields",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     setLoading(true);
     
     try {
@@ -42,6 +68,7 @@ const LoginForm = () => {
           description: "Please check your patient ID and try again.",
           variant: "destructive"
         });
+        setLoading(false);
         return;
       }
       
@@ -55,6 +82,7 @@ const LoginForm = () => {
           description: "The date of birth does not match our records.",
           variant: "destructive"
         });
+        setLoading(false);
         return;
       }
       
@@ -75,13 +103,44 @@ const LoginForm = () => {
         description: "An unexpected error occurred. Please try again.",
         variant: "destructive"
       });
-    } finally {
       setLoading(false);
     }
   };
 
   const handleDoctorSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (isSignUp) {
+      // Validate sign-up fields
+      const isEmailValid = validateField('doctorEmail', doctorEmail);
+      const isPasswordValid = validateField('doctorPassword', doctorPassword);
+      const isNameValid = validateField('doctorName', doctorName);
+      const isWorkplaceValid = validateField('doctorWorkplace', doctorWorkplace);
+      const isIdentifierValid = validateField('doctorIdentifier', doctorIdentifier);
+      
+      if (!isEmailValid || !isPasswordValid || !isNameValid || !isWorkplaceValid || !isIdentifierValid) {
+        toast({
+          title: "Validation Error",
+          description: "Please fill in all required fields",
+          variant: "destructive"
+        });
+        return;
+      }
+    } else {
+      // Validate login fields
+      const isEmailValid = validateField('doctorEmail', doctorEmail);
+      const isPasswordValid = validateField('doctorPassword', doctorPassword);
+      
+      if (!isEmailValid || !isPasswordValid) {
+        toast({
+          title: "Validation Error",
+          description: "Please fill in all required fields",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+    
     setLoading(true);
     
     if (isSignUp) {
@@ -136,6 +195,7 @@ const LoginForm = () => {
               variant: "destructive",
             });
           }
+          setLoading(false);
           return; // Stop execution on error
         }
 
@@ -201,9 +261,14 @@ const LoginForm = () => {
                   id="patientId"
                   placeholder="Enter your 9-digit ID"
                   value={patientId}
-                  onChange={(e) => setPatientId(e.target.value)}
+                  onChange={(e) => {
+                    setPatientId(e.target.value);
+                    validateField('patientId', e.target.value);
+                  }}
+                  className={errors.patientId ? 'border-red-500 focus-visible:ring-red-500' : ''}
                   required
                 />
+                {errors.patientId && <p className="text-xs text-red-500">Patient ID is required</p>}
               </div>
               
               <div className="space-y-2">
@@ -212,9 +277,14 @@ const LoginForm = () => {
                   id="patientDob"
                   type="date"
                   value={patientDob}
-                  onChange={(e) => setPatientDob(e.target.value)}
+                  onChange={(e) => {
+                    setPatientDob(e.target.value);
+                    validateField('patientDob', e.target.value);
+                  }}
+                  className={errors.patientDob ? 'border-red-500 focus-visible:ring-red-500' : ''}
                   required
                 />
+                {errors.patientDob && <p className="text-xs text-red-500">Date of birth is required</p>}
                 <p className="text-xs text-muted-foreground">Format: YYYY-MM-DD</p>
               </div>
               
@@ -233,7 +303,10 @@ const LoginForm = () => {
               <h3 className="text-lg font-semibold">{isSignUp ? "Create Account" : "Doctor Login"}</h3>
               <Button 
                 variant="link" 
-                onClick={() => setIsSignUp(!isSignUp)}
+                onClick={() => {
+                  setIsSignUp(!isSignUp);
+                  setErrors({});
+                }}
                 className="p-0 h-auto"
               >
                 {isSignUp ? "Back to Login" : "Sign Up"}
@@ -251,9 +324,14 @@ const LoginForm = () => {
                       type="email"
                       placeholder="Enter your email"
                       value={doctorEmail}
-                      onChange={(e) => setDoctorEmail(e.target.value)}
+                      onChange={(e) => {
+                        setDoctorEmail(e.target.value);
+                        validateField('doctorEmail', e.target.value);
+                      }}
+                      className={errors.doctorEmail ? 'border-red-500 focus-visible:ring-red-500' : ''}
                       required
                     />
+                    {errors.doctorEmail && <p className="text-xs text-red-500">Email is required</p>}
                   </div>
                   
                   <div className="space-y-2">
@@ -263,9 +341,14 @@ const LoginForm = () => {
                       type="password"
                       placeholder="Create a password"
                       value={doctorPassword}
-                      onChange={(e) => setDoctorPassword(e.target.value)}
+                      onChange={(e) => {
+                        setDoctorPassword(e.target.value);
+                        validateField('doctorPassword', e.target.value);
+                      }}
+                      className={errors.doctorPassword ? 'border-red-500 focus-visible:ring-red-500' : ''}
                       required
                     />
+                    {errors.doctorPassword && <p className="text-xs text-red-500">Password is required</p>}
                   </div>
                   
                   <div className="space-y-2">
@@ -274,9 +357,14 @@ const LoginForm = () => {
                       id="doctorName"
                       placeholder="Dr. Jane Smith"
                       value={doctorName}
-                      onChange={(e) => setDoctorName(e.target.value)}
+                      onChange={(e) => {
+                        setDoctorName(e.target.value);
+                        validateField('doctorName', e.target.value);
+                      }}
+                      className={errors.doctorName ? 'border-red-500 focus-visible:ring-red-500' : ''}
                       required
                     />
+                    {errors.doctorName && <p className="text-xs text-red-500">Full name is required</p>}
                   </div>
                   
                   <div className="space-y-2">
@@ -285,9 +373,14 @@ const LoginForm = () => {
                       id="doctorWorkplace"
                       placeholder="Hospital or Clinic Name"
                       value={doctorWorkplace}
-                      onChange={(e) => setDoctorWorkplace(e.target.value)}
+                      onChange={(e) => {
+                        setDoctorWorkplace(e.target.value);
+                        validateField('doctorWorkplace', e.target.value);
+                      }}
+                      className={errors.doctorWorkplace ? 'border-red-500 focus-visible:ring-red-500' : ''}
                       required
                     />
+                    {errors.doctorWorkplace && <p className="text-xs text-red-500">Workplace is required</p>}
                   </div>
                   
                   <div className="space-y-2">
@@ -296,9 +389,14 @@ const LoginForm = () => {
                       id="doctorIdentifier"
                       placeholder="Your unique doctor ID"
                       value={doctorIdentifier}
-                      onChange={(e) => setDoctorIdentifier(e.target.value)}
+                      onChange={(e) => {
+                        setDoctorIdentifier(e.target.value);
+                        validateField('doctorIdentifier', e.target.value);
+                      }}
+                      className={errors.doctorIdentifier ? 'border-red-500 focus-visible:ring-red-500' : ''}
                       required
                     />
+                    {errors.doctorIdentifier && <p className="text-xs text-red-500">Identifier is required</p>}
                     <p className="text-xs text-muted-foreground">A unique identifier for your account</p>
                   </div>
                 </>
@@ -311,9 +409,14 @@ const LoginForm = () => {
                       id="doctorEmail"
                       placeholder="Enter your email or ID"
                       value={doctorEmail}
-                      onChange={(e) => setDoctorEmail(e.target.value)}
+                      onChange={(e) => {
+                        setDoctorEmail(e.target.value);
+                        validateField('doctorEmail', e.target.value);
+                      }}
+                      className={errors.doctorEmail ? 'border-red-500 focus-visible:ring-red-500' : ''}
                       required
                     />
+                    {errors.doctorEmail && <p className="text-xs text-red-500">Email or identifier is required</p>}
                   </div>
                   
                   <div className="space-y-2">
@@ -323,10 +426,14 @@ const LoginForm = () => {
                       type="password"
                       placeholder="Enter your password"
                       value={doctorPassword}
-                      onChange={(e) => setDoctorPassword(e.target.value)}
+                      onChange={(e) => {
+                        setDoctorPassword(e.target.value);
+                        validateField('doctorPassword', e.target.value);
+                      }}
+                      className={errors.doctorPassword ? 'border-red-500 focus-visible:ring-red-500' : ''}
                       required
                     />
-                    <p className="text-xs text-muted-foreground">Use "3581" for demo admin login</p>
+                    {errors.doctorPassword && <p className="text-xs text-red-500">Password is required</p>}
                   </div>
                 </>
               )}

@@ -140,6 +140,32 @@ export interface Database {
           created_at?: string
         }
       }
+      appointments: {
+        Row: {
+          id: string
+          patient_id: string
+          date: string
+          type: string
+          place: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          patient_id: string
+          date: string
+          type: string
+          place: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          patient_id?: string
+          date?: string
+          type?: string
+          place?: string
+          created_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never

@@ -1,24 +1,234 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
-import { CalendarDays, Pill, Image, FileText } from 'lucide-react';
+import { CalendarDays, Pill, FileText, Image } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import BodyDiagram from './BodyDiagram';
 import { BodyPart, Patient } from '@/types/patient';
+import { Form, FormField, FormItem, FormLabel, FormControl } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { useForm } from 'react-hook-form';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/lib/supabase';
 
 interface PatientTabsProps {
   patient: Patient;
   isDoctor: boolean;
   onAddCondition?: (bodyPart: BodyPart) => void;
   onAddMedication?: () => void;
+  onAddAppointment?: () => void;
+  onAddHistoryRecord?: () => void;
+  setPatient?: React.Dispatch<React.SetStateAction<Patient>>;
 }
 
 const PatientTabs: React.FC<PatientTabsProps> = ({ 
   patient, 
   isDoctor, 
   onAddCondition,
-  onAddMedication 
+  onAddMedication,
+  onAddAppointment,
+  onAddHistoryRecord,
+  setPatient
 }) => {
+  const { toast } = useToast();
+  const [expandedHistory, setExpandedHistory] = useState<string | null>(null);
+  
+  // Form for adding appointments
+  const appointmentForm = useForm({
+    defaultValues: {
+      date: '',
+      type: '',
+      place: '',
+    }
+  });
+  
+  // Form for adding medical history
+  const historyForm = useForm({
+    defaultValues: {
+      date: new Date().toISOString().split('T')[0],
+      condition: '',
+      notes: '',
+    }
+  });
+  
+  // Form for adding medication
+  const medicationForm = useForm({
+    defaultValues: {
+      name: '',
+      dosage: '',
+      since: new Date().toISOString().split('T')[0],
+    }
+  });
+
+  // Toggle history item expansion
+  const toggleHistoryItem = (id: string) => {
+    setExpandedHistory(expandedHistory === id ? null : id);
+  };
+  
+  // Submit appointment form
+  const handleAppointmentSubmit = async (data: any) => {
+    if (!patient.id) {
+      toast({
+        title: "Error",
+        description: "Patient ID is missing",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    try {
+      const { error } = await supabase
+        .from('appointments')
+        .insert({
+          patient_id: patient.id,
+          date: data.date,
+          type: data.type,
+          place: data.place,
+        });
+        
+      if (error) throw error;
+      
+      toast({
+        title: "Success",
+        description: "Appointment added successfully"
+      });
+      
+      if (setPatient) {
+        setPatient(prev => ({
+          ...prev,
+          appointments: [
+            ...(prev.appointments || []),
+            {
+              date: data.date,
+              type: data.type,
+              place: data.place,
+            }
+          ]
+        }));
+      }
+      
+      appointmentForm.reset();
+      
+    } catch (error) {
+      console.error('Error adding appointment:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add appointment",
+        variant: "destructive"
+      });
+    }
+  };
+  
+  // Submit history form
+  const handleHistorySubmit = async (data: any) => {
+    if (!patient.id) {
+      toast({
+        title: "Error",
+        description: "Patient ID is missing",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    try {
+      const { error } = await supabase
+        .from('medical_history')
+        .insert({
+          patient_id: patient.id,
+          date: data.date,
+          condition: data.condition,
+          notes: data.notes,
+        });
+        
+      if (error) throw error;
+      
+      toast({
+        title: "Success",
+        description: "Medical history added successfully"
+      });
+      
+      if (setPatient) {
+        setPatient(prev => ({
+          ...prev,
+          medicalHistory: [
+            {
+              date: data.date,
+              condition: data.condition,
+              notes: data.notes,
+            },
+            ...prev.medicalHistory
+          ]
+        }));
+      }
+      
+      historyForm.reset();
+      
+    } catch (error) {
+      console.error('Error adding medical history:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add medical history",
+        variant: "destructive"
+      });
+    }
+  };
+  
+  // Submit medication form
+  const handleMedicationSubmit = async (data: any) => {
+    if (!patient.id) {
+      toast({
+        title: "Error",
+        description: "Patient ID is missing",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    try {
+      const { error } = await supabase
+        .from('medications')
+        .insert({
+          patient_id: patient.id,
+          name: data.name,
+          dosage: data.dosage,
+          since: data.since,
+        });
+        
+      if (error) throw error;
+      
+      toast({
+        title: "Success",
+        description: "Medication added successfully"
+      });
+      
+      if (setPatient) {
+        setPatient(prev => ({
+          ...prev,
+          currentConditions: [
+            ...prev.currentConditions,
+            {
+              name: data.name,
+              since: data.since,
+              medications: [data.dosage],
+            }
+          ]
+        }));
+      }
+      
+      medicationForm.reset();
+      
+    } catch (error) {
+      console.error('Error adding medication:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add medication",
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
     <Card className="mt-6">
       <Tabs defaultValue="appointments" className="w-full">
@@ -67,29 +277,149 @@ const PatientTabs: React.FC<PatientTabsProps> = ({
         <CardContent className="pt-6">
           {/* Appointments Tab */}
           <TabsContent value="appointments">
-            <h3 className="text-xl font-bold mb-4">Doctor Appointments</h3>
-            {patient && patient.medicalHistory && patient.medicalHistory.length > 0 ? (
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold">Doctor Appointments</h3>
+              {isDoctor && (
+                <Button
+                  size="sm"
+                  onClick={onAddAppointment}
+                >
+                  Add Appointment
+                </Button>
+              )}
+            </div>
+            
+            {isDoctor && (
+              <Form {...appointmentForm}>
+                <form onSubmit={appointmentForm.handleSubmit(handleAppointmentSubmit)} className="space-y-4 mb-6 p-4 border border-border rounded-md">
+                  <h4 className="font-medium">Add New Appointment</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <FormField
+                      control={appointmentForm.control}
+                      name="date"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Date</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={appointmentForm.control}
+                      name="type"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Type</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Appointment type..." {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={appointmentForm.control}
+                      name="place"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Place</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Appointment location..." {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <div className="flex justify-end">
+                    <Button type="submit">Save Appointment</Button>
+                  </div>
+                </form>
+              </Form>
+            )}
+            
+            {patient && patient.appointments && patient.appointments.length > 0 ? (
               <div className="space-y-4">
-                {patient.medicalHistory.map((entry, index) => (
+                {patient.appointments.map((appointment, index) => (
                   <div key={index} className="border border-border rounded-md p-3 shadow-sm">
                     <div className="flex justify-between items-center mb-2">
-                      <h4 className="font-medium">{entry.condition}</h4>
-                      <span className="text-xs text-muted-foreground">{entry.date}</span>
+                      <h4 className="font-medium">{appointment.type}</h4>
+                      <span className="text-xs text-muted-foreground">{appointment.date}</span>
                     </div>
-                    <p className="text-sm">{entry.notes}</p>
+                    <p className="text-sm">Location: {appointment.place}</p>
                   </div>
                 ))}
               </div>
             ) : (
               <div className="text-center py-8">
-                <p className="text-muted-foreground">No appointment history</p>
+                <p className="text-muted-foreground">No scheduled appointments</p>
               </div>
             )}
           </TabsContent>
           
           {/* Medications Tab */}
           <TabsContent value="medications">
-            <h3 className="text-xl font-bold mb-4">Current Medications</h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold">Current Medications</h3>
+              {isDoctor && (
+                <Button 
+                  size="sm"
+                  onClick={onAddMedication}
+                >
+                  Add Medication
+                </Button>
+              )}
+            </div>
+            
+            {isDoctor && (
+              <Form {...medicationForm}>
+                <form onSubmit={medicationForm.handleSubmit(handleMedicationSubmit)} className="space-y-4 mb-6 p-4 border border-border rounded-md">
+                  <h4 className="font-medium">Add New Medication</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <FormField
+                      control={medicationForm.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Medication Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Medication name..." {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={medicationForm.control}
+                      name="dosage"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Dosage</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g. 10mg twice daily" {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={medicationForm.control}
+                      name="since"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Since</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <div className="flex justify-end">
+                    <Button type="submit">Save Medication</Button>
+                  </div>
+                </form>
+              </Form>
+            )}
+            
             {patient && patient.currentConditions && patient.currentConditions.length > 0 ? (
               <div className="divide-y divide-border">
                 {patient.currentConditions.map((condition, index) => (
@@ -157,16 +487,95 @@ const PatientTabs: React.FC<PatientTabsProps> = ({
           
           {/* Medical History Tab */}
           <TabsContent value="history">
-            <h3 className="text-xl font-bold mb-4">Medical History</h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold">Medical History</h3>
+              {isDoctor && (
+                <Button 
+                  size="sm"
+                  onClick={onAddHistoryRecord}
+                >
+                  Add Medical Record
+                </Button>
+              )}
+            </div>
+            
+            {isDoctor && (
+              <Form {...historyForm}>
+                <form onSubmit={historyForm.handleSubmit(handleHistorySubmit)} className="space-y-4 mb-6 p-4 border border-border rounded-md">
+                  <h4 className="font-medium">Add New Medical Record</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={historyForm.control}
+                      name="date"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Date</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={historyForm.control}
+                      name="condition"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Condition</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Condition name..." {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <FormField
+                    control={historyForm.control}
+                    name="notes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Notes</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Additional notes..." 
+                            {...field} 
+                            rows={3}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <div className="flex justify-end">
+                    <Button type="submit">Save Medical Record</Button>
+                  </div>
+                </form>
+              </Form>
+            )}
+            
             {patient && patient.medicalHistory && patient.medicalHistory.length > 0 ? (
               <div className="space-y-4">
                 {patient.medicalHistory.map((entry, index) => (
-                  <div key={index} className="border border-border rounded-md p-3 shadow-sm">
+                  <div 
+                    key={index} 
+                    className="border border-border rounded-md p-3 shadow-sm cursor-pointer"
+                    onClick={() => toggleHistoryItem(`history-${index}`)}
+                  >
                     <div className="flex justify-between items-center mb-2">
                       <h4 className="font-medium">{entry.condition}</h4>
                       <span className="text-xs text-muted-foreground">{entry.date}</span>
                     </div>
-                    <p className="text-sm">{entry.notes}</p>
+                    {expandedHistory === `history-${index}` ? (
+                      <p className="text-sm">{entry.notes}</p>
+                    ) : (
+                      <p className="text-sm text-muted-foreground truncate">
+                        {entry.notes}
+                      </p>
+                    )}
+                    {entry.notes && (
+                      <p className="text-xs text-primary mt-2">
+                        {expandedHistory === `history-${index}` ? "Click to collapse" : "Click to expand"}
+                      </p>
+                    )}
                   </div>
                 ))}
               </div>

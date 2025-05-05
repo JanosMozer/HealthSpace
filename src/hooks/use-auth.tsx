@@ -29,39 +29,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     }
     
-    // Check for admin user session
-    const isAdmin = sessionStorage.getItem('isAdmin') === 'true';
-    if (isAdmin && !doctor) {
-      setDoctor({
-        id: 'admin',
-        email: 'admin@hospital.com',
-        name: 'Admin User',
-        workplace: 'Hospital Admin',
-        identifier: 'admin'
-      });
-    }
-    
     setLoading(false);
   }, []);
 
   const login = async (identifier: string, password: string) => {
-    // Admin hardcoded account
-    if ((identifier === 'admin' || identifier === 'admin@hospital.com') && password === '3581') {
-      const adminDoctor = {
-        id: 'admin',
-        email: 'admin@hospital.com',
-        name: 'Admin User',
-        workplace: 'Hospital Admin',
-        identifier: 'admin'
-      };
-      
-      setDoctor(adminDoctor);
-      sessionStorage.setItem('doctor', JSON.stringify(adminDoctor));
-      sessionStorage.setItem('isAdmin', 'true');
-      
-      return { success: true, message: 'Welcome, Admin!' };
-    }
-    
     // Regular doctor login via Supabase
     try {
       // Try to find doctor by identifier or email
@@ -73,11 +44,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       if (error || !data) {
         console.log('Error or no data found:', error);
-        return { success: false, message: 'Doctor not found' };
+        return { success: false, message: 'Doctor not found or invalid credentials' };
       }
       
       // In a real app, we'd check the hashed password here
-      // For now, just simulate successful login
+      // For now, just simulate successful login with any password
       setDoctor(data);
       sessionStorage.setItem('doctor', JSON.stringify(data));
       
@@ -91,7 +62,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = () => {
     setDoctor(null);
     sessionStorage.removeItem('doctor');
-    sessionStorage.removeItem('isAdmin');
   };
 
   return (

@@ -24,6 +24,13 @@ export interface Condition {
   description: string;
 }
 
+// Appointment
+export interface Appointment {
+  date: string;
+  type: string;
+  place: string;
+}
+
 // Complete patient type
 export interface Patient {
   id: string;
@@ -43,6 +50,7 @@ export interface Patient {
     notes: string;
   }[];
   bodyConditions: Condition[];
+  appointments?: Appointment[];
 }
 
 export interface Doctor {

@@ -1,9 +1,10 @@
+
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import PatientInfo from '@/components/PatientInfo';
 import PatientTabs from '@/components/PatientTabs';
 import { useToast } from '@/hooks/use-toast';
-import { BodyPart, Patient } from '@/types/patient';
+import { BodyPart, Patient, Appointment } from '@/types/patient';
 import { supabase, getSupabaseStatus, initializeDatabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/use-auth';
 import PatientHeader from '@/components/PatientHeader';
@@ -18,13 +19,14 @@ const PatientProfile = () => {
   const [isEditingCondition, setIsEditingCondition] = useState(false);
   const [isAddingMedication, setIsAddingMedication] = useState(false);
   const [isAddingHistoryRecord, setIsAddingHistoryRecord] = useState(false);
+  const [isAddingAppointment, setIsAddingAppointment] = useState(false);
   
   // State for body part selection
   const [selectedBodyPart, setSelectedBodyPart] = useState<BodyPart | null>(null);
   
   // Patient data
   const [patient, setPatient] = useState<Patient>({
-    id: patientId || '',
+    id: '',
     name: '',
     age: 0,
     dob: '',
@@ -33,6 +35,7 @@ const PatientProfile = () => {
     currentConditions: [],
     medicalHistory: [],
     bodyConditions: [],
+    appointments: [],
   });
   
   const [loading, setLoading] = useState(true);
@@ -64,12 +67,15 @@ const PatientProfile = () => {
   // Fetch patient data
   useEffect(() => {
     const fetchPatient = async () => {
-      if (!patientId) return;
+      if (!patientId) {
+        setLoading(false);
+        return;
+      }
       
       try {
         console.log("Fetching patient with ID:", patientId);
         
-        // Try fetching data without single()
+        // First try direct patient data fetch
         const { data: patientsData, error: patientsError } = await supabase
           .from('patients')
           .select('*')
@@ -79,20 +85,19 @@ const PatientProfile = () => {
           console.error('Error fetching patients:', patientsError);
           toast({
             title: "Error",
-            description: "Failed to load patient data",
+            description: "Failed to load patient data. Using local data.",
             variant: "destructive"
           });
-          return;
         }
         
         if (!patientsData || patientsData.length === 0) {
           console.error('No patient found with identifier:', patientId);
           toast({
             title: "Not Found",
-            description: "Patient record not found",
+            description: "Patient record not found. Using local data.",
             variant: "destructive"
           });
-          setLoading(false); // Ensure loading stops if patient not found
+          setLoading(false);
           return;
         }
 
@@ -100,42 +105,77 @@ const PatientProfile = () => {
         const patientData = patientsData[0];
         console.log("Patient data retrieved:", patientData);
         
-        // Fetch conditions
-        const { data: conditionsData, error: conditionsError } = await supabase
-          .from('conditions')
-          .select('*')
-          .eq('patient_id', patientData.id);
+        // Try to fetch related data with proper error handling
+        let conditionsData: any[] = [];
+        let medicationsData: any[] = [];
+        let historyData: any[] = [];
+        let appointmentsData: any[] = [];
         
-        if (conditionsError) {
-          console.error('Error fetching conditions:', conditionsError);
+        try {
+          // Fetch conditions
+          const { data: conditions, error: conditionsError } = await supabase
+            .from('conditions')
+            .select('*')
+            .eq('patient_id', patientData.id);
+          
+          if (conditionsError) {
+            console.error('Error fetching conditions:', conditionsError);
+          } else if (conditions) {
+            conditionsData = conditions;
+          }
+        } catch (e) {
+          console.error('Failed to fetch conditions:', e);
         }
         
-        console.log("Conditions data:", conditionsData);
-        
-        // Fetch medications
-        const { data: medicationsData, error: medicationsError } = await supabase
-          .from('medications')
-          .select('*')
-          .eq('patient_id', patientData.id);
-        
-        if (medicationsError) {
-          console.error('Error fetching medications:', medicationsError);
+        try {
+          // Fetch medications
+          const { data: medications, error: medicationsError } = await supabase
+            .from('medications')
+            .select('*')
+            .eq('patient_id', patientData.id);
+          
+          if (medicationsError) {
+            console.error('Error fetching medications:', medicationsError);
+          } else if (medications) {
+            medicationsData = medications;
+          }
+        } catch (e) {
+          console.error('Failed to fetch medications:', e);
         }
         
-        console.log("Medications data:", medicationsData);
-        
-        // Fetch medical history
-        const { data: historyData, error: historyError } = await supabase
-          .from('medical_history')
-          .select('*')
-          .eq('patient_id', patientData.id)
-          .order('date', { ascending: false });
-        
-        if (historyError) {
-          console.error('Error fetching medical history:', historyError);
+        try {
+          // Fetch medical history
+          const { data: history, error: historyError } = await supabase
+            .from('medical_history')
+            .select('*')
+            .eq('patient_id', patientData.id)
+            .order('date', { ascending: false });
+          
+          if (historyError) {
+            console.error('Error fetching medical history:', historyError);
+          } else if (history) {
+            historyData = history;
+          }
+        } catch (e) {
+          console.error('Failed to fetch medical history:', e);
         }
         
-        console.log("History data:", historyData);
+        try {
+          // Fetch appointments
+          const { data: appointments, error: appointmentsError } = await supabase
+            .from('appointments')
+            .select('*')
+            .eq('patient_id', patientData.id)
+            .order('date', { ascending: true });
+          
+          if (appointmentsError) {
+            console.error('Error fetching appointments:', appointmentsError);
+          } else if (appointments) {
+            appointmentsData = appointments;
+          }
+        } catch (e) {
+          console.error('Failed to fetch appointments:', e);
+        }
         
         // Transform data for our components
         const currentConditions = medicationsData?.map(med => ({
@@ -155,23 +195,30 @@ const PatientProfile = () => {
           description: condition.description,
         })) || [];
         
+        const appointments = appointmentsData?.map(appointment => ({
+          date: appointment.date,
+          type: appointment.type,
+          place: appointment.place,
+        })) || [];
+        
         setPatient({
           id: patientData.id,
-          name: patientData.name,
-          age: patientData.age,
-          dob: patientData.dob,
-          gender: patientData.gender,
-          identifier: patientData.identifier,
+          name: patientData.name || 'Patient',
+          age: patientData.age || 0,
+          dob: patientData.dob || '',
+          gender: patientData.gender || '',
+          identifier: patientData.identifier || patientId,
           currentConditions,
           medicalHistory,
           bodyConditions,
+          appointments,
         });
         
       } catch (error) {
         console.error('Error in data fetching:', error);
         toast({
           title: "Error",
-          description: "An error occurred while loading patient data",
+          description: "An error occurred while loading patient data. Using local data.",
           variant: "destructive"
         });
       } finally {
@@ -194,6 +241,18 @@ const PatientProfile = () => {
   const handleAddMedication = () => {
     if (!isDoctor) return;
     setIsAddingMedication(true);
+  };
+  
+  // Handler for adding medical history record
+  const handleAddHistoryRecord = () => {
+    if (!isDoctor) return;
+    setIsAddingHistoryRecord(true);
+  };
+  
+  // Handler for adding appointment
+  const handleAddAppointment = () => {
+    if (!isDoctor) return;
+    setIsAddingAppointment(true);
   };
 
   // Loading state
@@ -220,36 +279,16 @@ const PatientProfile = () => {
         <PatientInfo 
           patient={patient} 
           isReadOnly={!isDoctor} 
-          onAddHistory={() => setIsAddingHistoryRecord(true)}
+          onAddHistory={handleAddHistoryRecord}
         />
 
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-primary">{patient.name}</h1>
-            <p className="text-lg text-muted-foreground">ID: {patient.identifier}</p> {/* Moved ID below name */}
+            <h1 className="text-3xl font-bold text-primary">{patient.name || 'Patient'}</h1>
+            <p className="text-lg text-muted-foreground">ID: {patient.identifier}</p>
             <p className="text-sm text-muted-foreground">
-              {patient.age} years old ({patient.gender}), DOB: {new Date(patient.dob).toLocaleDateString()}
+              {patient.age} years old ({patient.gender}), DOB: {patient.dob ? new Date(patient.dob).toLocaleDateString() : 'N/A'}
             </p>
-          </div>
-          {isDoctor && (
-            <AddDataDialog
-              patient={patient}
-              setPatient={setPatient}
-              selectedBodyPart={selectedBodyPart}
-              setSelectedBodyPart={setSelectedBodyPart}
-            />
-          )}
-        </div>
-
-        {/* Patient Canvas and Details */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* ... Patient Canvas ... */}
-
-          {/* Patient Details Column */}
-          <div className="md:col-span-1 space-y-6">
-            <CurrentConditions conditions={patient.currentConditions} />
-            <Medications medications={patient.currentConditions} /> {/* Assuming medications are part of currentConditions structure */}
-            {/* <MedicalHistory history={patient.medicalHistory} /> */} {/* Commented out Medical History */}
           </div>
         </div>
         
@@ -260,6 +299,9 @@ const PatientProfile = () => {
             isDoctor={isDoctor} 
             onAddCondition={handleAddCondition} 
             onAddMedication={handleAddMedication}
+            onAddAppointment={handleAddAppointment}
+            onAddHistoryRecord={handleAddHistoryRecord}
+            setPatient={setPatient}
           />
         </div>
       </main>
@@ -276,6 +318,8 @@ const PatientProfile = () => {
         setIsAddingMedication={setIsAddingMedication}
         isAddingHistoryRecord={isAddingHistoryRecord}
         setIsAddingHistoryRecord={setIsAddingHistoryRecord}
+        isAddingAppointment={isAddingAppointment}
+        setIsAddingAppointment={setIsAddingAppointment}
       />
     </div>
   );
