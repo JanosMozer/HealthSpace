@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -109,26 +110,8 @@ const PatientSearch = () => {
         variant: "destructive"
       });
       
-      // Fall back to mock data for demo
-      // Filter mock data based on query
-      const mockPatients = [
-        { id: '123456789', name: 'John Doe', dob: '1980-05-15', conditions: ['Hypertension', 'Diabetes'] },
-        { id: '234567890', name: 'Jane Smith', dob: '1975-10-22', conditions: ['Asthma'] },
-        { id: '345678901', name: 'Greg Johnson', dob: '1990-03-14', conditions: ['Arthritis'] },
-      ];
-      
-      const filteredMock = mockPatients.filter(
-        patient => 
-          patient.id.startsWith(query) || 
-          patient.name.toLowerCase().includes(query.toLowerCase())
-      );
-      
-      setSearchResults(filteredMock);
-      
-      toast({
-        title: "Using demo data",
-        description: "Showing sample patient data due to database error",
-      });
+      // Reset search results on error
+      setSearchResults([]);
     } finally {
       setIsSearching(false);
     }
