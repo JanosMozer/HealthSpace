@@ -87,27 +87,19 @@ const LoginForm = () => {
     if (isSignUp) {
       // Sign up logic
       try {
-        // --- Debugging Step 1: Log the client instance ---
         console.log('Using Supabase client instance in handleDoctorSubmit:', supabase);
-
-        // --- Debugging Step 2: Test a simple SELECT request ---
         console.log('Attempting a test SELECT from doctors...');
         const { data: testData, error: testError } = await supabase
           .from('doctors')
-          .select('id') // Select a simple column
+          .select('id')
           .limit(1);
 
         if (testError) {
-          console.error('Test SELECT failed:', testError);
-          // Check network tab even on failure - did it send headers?
+          console.error('SELECT failed:', testError);
         } else {
-          console.log('Test SELECT successful:', testData);
-          // Check network tab - did it send headers?
+          console.log('SELECT successful:', testData);
         }
-        // --- End Debugging Step 2 ---
-
-        // --- Original INSERT logic ---
-        console.log('Attempting INSERT into doctors with data:', {
+        console.log(' INSERT:', {
           email: doctorEmail,
           name: doctorName,
           workplace: doctorWorkplace,
