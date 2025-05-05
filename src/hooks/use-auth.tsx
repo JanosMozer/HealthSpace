@@ -2,6 +2,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Doctor } from '@/types/patient';
+import { useNavigate } from 'react-router-dom';
 
 interface AuthContextType {
   doctor: Doctor | null;
@@ -62,6 +63,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = () => {
     setDoctor(null);
     sessionStorage.removeItem('doctor');
+    sessionStorage.removeItem('userType');
+    
+    // Redirect to login page
+    window.location.href = '/';
   };
 
   return (

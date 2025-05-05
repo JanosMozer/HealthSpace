@@ -31,6 +31,13 @@ export interface Appointment {
   place: string;
 }
 
+// Examination record
+export interface Examination {
+  date: string;
+  name: string;
+  notes: string;
+}
+
 // Complete patient type
 export interface Patient {
   id: string;
@@ -51,6 +58,7 @@ export interface Patient {
   }[];
   bodyConditions: Condition[];
   appointments?: Appointment[];
+  examinations?: Examination[];
 }
 
 export interface Doctor {

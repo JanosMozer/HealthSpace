@@ -1,10 +1,10 @@
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import PatientInfo from '@/components/PatientInfo';
 import PatientTabs from '@/components/PatientTabs';
 import { useToast } from '@/hooks/use-toast';
-import { BodyPart, Patient, Appointment } from '@/types/patient';
+import { BodyPart, Patient, Examination } from '@/types/patient';
 import { supabase, getSupabaseStatus, initializeDatabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/use-auth';
 import PatientHeader from '@/components/PatientHeader';
@@ -13,13 +13,15 @@ import PatientDialogs from '@/components/PatientDialogs';
 const PatientProfile = () => {
   const { patientId } = useParams<{ patientId: string }>();
   const { toast } = useToast();
-  const { isDoctor } = useAuth();
+  const { isDoctor, logout } = useAuth();
+  const navigate = useNavigate();
   
   // Dialogs state
   const [isEditingCondition, setIsEditingCondition] = useState(false);
   const [isAddingMedication, setIsAddingMedication] = useState(false);
   const [isAddingHistoryRecord, setIsAddingHistoryRecord] = useState(false);
   const [isAddingAppointment, setIsAddingAppointment] = useState(false);
+  const [isAddingExamination, setIsAddingExamination] = useState(false);
   
   // State for body part selection
   const [selectedBodyPart, setSelectedBodyPart] = useState<BodyPart | null>(null);
@@ -36,10 +38,28 @@ const PatientProfile = () => {
     medicalHistory: [],
     bodyConditions: [],
     appointments: [],
+    examinations: [],
   });
   
   const [loading, setLoading] = useState(true);
   const [connectionStatus, setConnectionStatus] = useState<any>(null);
+
+  // Check if the user is authorized to view this page
+  useEffect(() => {
+    const userType = sessionStorage.getItem('userType');
+    const storedPatientId = sessionStorage.getItem('patientId');
+    
+    // If user is neither a doctor nor the patient who owns this profile, redirect to login
+    if (!userType || (userType === 'patient' && storedPatientId !== patientId)) {
+      toast({
+        title: "Unauthorized",
+        description: "You don't have permission to view this page",
+        variant: "destructive"
+      });
+      logout();
+      return;
+    }
+  }, [patientId, toast, logout]);
 
   // Check Supabase connection and initialize database
   useEffect(() => {
@@ -110,6 +130,7 @@ const PatientProfile = () => {
         let medicationsData: any[] = [];
         let historyData: any[] = [];
         let appointmentsData: any[] = [];
+        let examinationsData: any[] = [];
         
         try {
           // Fetch conditions
@@ -177,6 +198,23 @@ const PatientProfile = () => {
           console.error('Failed to fetch appointments:', e);
         }
         
+        try {
+          // Fetch examinations
+          const { data: examinations, error: examinationsError } = await supabase
+            .from('examinations')
+            .select('*')
+            .eq('patient_id', patientData.id)
+            .order('date', { ascending: false });
+          
+          if (examinationsError) {
+            console.error('Error fetching examinations:', examinationsError);
+          } else if (examinations) {
+            examinationsData = examinations;
+          }
+        } catch (e) {
+          console.error('Failed to fetch examinations:', e);
+        }
+        
         // Transform data for our components
         const currentConditions = medicationsData?.map(med => ({
           name: med.name,
@@ -201,6 +239,12 @@ const PatientProfile = () => {
           place: appointment.place,
         })) || [];
         
+        const examinations = examinationsData?.map(exam => ({
+          date: exam.date,
+          name: exam.name,
+          notes: exam.notes,
+        })) || [];
+        
         setPatient({
           id: patientData.id,
           name: patientData.name || 'Patient',
@@ -212,6 +256,7 @@ const PatientProfile = () => {
           medicalHistory,
           bodyConditions,
           appointments,
+          examinations,
         });
         
       } catch (error) {
@@ -254,6 +299,12 @@ const PatientProfile = () => {
     if (!isDoctor) return;
     setIsAddingAppointment(true);
   };
+  
+  // Handler for adding examination
+  const handleAddExamination = () => {
+    if (!isDoctor) return;
+    setIsAddingExamination(true);
+  };
 
   // Loading state
   if (loading) {
@@ -271,7 +322,7 @@ const PatientProfile = () => {
     <div className="min-h-screen bg-white">
       <PatientHeader 
         connectionStatus={connectionStatus} 
-        patientName={patient.name || 'Patient Profile'}
+        patientName={patient.name}
       />
       
       <main className="container max-w-7xl mx-auto py-8 px-4">
@@ -281,18 +332,8 @@ const PatientProfile = () => {
           isReadOnly={!isDoctor} 
           onAddHistory={handleAddHistoryRecord}
         />
-
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold text-primary">{patient.name || 'Patient'}</h1>
-            <p className="text-lg text-muted-foreground">ID: {patient.identifier}</p>
-            <p className="text-sm text-muted-foreground">
-              {patient.age} years old ({patient.gender}), DOB: {patient.dob ? new Date(patient.dob).toLocaleDateString() : 'N/A'}
-            </p>
-          </div>
-        </div>
         
-        {/* Tabbed sections with pictograms */}
+        {/* Tabbed sections */}
         <div className="mt-8">
           <PatientTabs 
             patient={patient} 
@@ -301,6 +342,7 @@ const PatientProfile = () => {
             onAddMedication={handleAddMedication}
             onAddAppointment={handleAddAppointment}
             onAddHistoryRecord={handleAddHistoryRecord}
+            onAddExamination={handleAddExamination}
             setPatient={setPatient}
           />
         </div>

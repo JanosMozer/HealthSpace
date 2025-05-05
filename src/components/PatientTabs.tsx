@@ -4,7 +4,6 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { CalendarDays, Pill, FileText, Image } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import BodyDiagram from './BodyDiagram';
 import { BodyPart, Patient } from '@/types/patient';
 import { Form, FormField, FormItem, FormLabel, FormControl } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -20,6 +19,7 @@ interface PatientTabsProps {
   onAddMedication?: () => void;
   onAddAppointment?: () => void;
   onAddHistoryRecord?: () => void;
+  onAddExamination?: () => void;
   setPatient?: React.Dispatch<React.SetStateAction<Patient>>;
 }
 
@@ -30,10 +30,12 @@ const PatientTabs: React.FC<PatientTabsProps> = ({
   onAddMedication,
   onAddAppointment,
   onAddHistoryRecord,
+  onAddExamination,
   setPatient
 }) => {
   const { toast } = useToast();
   const [expandedHistory, setExpandedHistory] = useState<string | null>(null);
+  const [expandedExamination, setExpandedExamination] = useState<string | null>(null);
   
   // Form for adding appointments
   const appointmentForm = useForm({
@@ -61,10 +63,24 @@ const PatientTabs: React.FC<PatientTabsProps> = ({
       since: new Date().toISOString().split('T')[0],
     }
   });
+  
+  // Form for adding examinations
+  const examinationForm = useForm({
+    defaultValues: {
+      date: new Date().toISOString().split('T')[0],
+      name: '',
+      notes: '',
+    }
+  });
 
   // Toggle history item expansion
   const toggleHistoryItem = (id: string) => {
     setExpandedHistory(expandedHistory === id ? null : id);
+  };
+  
+  // Toggle examination item expansion
+  const toggleExaminationItem = (id: string) => {
+    setExpandedExamination(expandedExamination === id ? null : id);
   };
   
   // Submit appointment form
@@ -228,6 +244,60 @@ const PatientTabs: React.FC<PatientTabsProps> = ({
       });
     }
   };
+  
+  // Submit examination form
+  const handleExaminationSubmit = async (data: any) => {
+    if (!patient.id) {
+      toast({
+        title: "Error",
+        description: "Patient ID is missing",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    try {
+      const { error } = await supabase
+        .from('examinations')
+        .insert({
+          patient_id: patient.id,
+          date: data.date,
+          name: data.name,
+          notes: data.notes,
+        });
+        
+      if (error) throw error;
+      
+      toast({
+        title: "Success",
+        description: "Examination added successfully"
+      });
+      
+      if (setPatient) {
+        setPatient(prev => ({
+          ...prev,
+          examinations: [
+            ...(prev.examinations || []),
+            {
+              date: data.date,
+              name: data.name,
+              notes: data.notes,
+            }
+          ]
+        }));
+      }
+      
+      examinationForm.reset();
+      
+    } catch (error) {
+      console.error('Error adding examination:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add examination",
+        variant: "destructive"
+      });
+    }
+  };
 
   return (
     <Card className="mt-6">
@@ -250,19 +320,19 @@ const PatientTabs: React.FC<PatientTabsProps> = ({
           </TabsTrigger>
           
           <TabsTrigger 
-            value="bodyDiagram" 
+            value="conditions" 
             className="flex flex-col items-center py-4 gap-2 data-[state=active]:bg-primary/10"
           >
             <FileText className="h-5 w-5" />
-            <span className="text-xs font-medium">Body Diagram</span>
+            <span className="text-xs font-medium">Conditions</span>
           </TabsTrigger>
           
           <TabsTrigger 
-            value="imaging" 
+            value="examinations" 
             className="flex flex-col items-center py-4 gap-2 data-[state=active]:bg-primary/10"
           >
             <Image className="h-5 w-5" />
-            <span className="text-xs font-medium">Imaging</span>
+            <span className="text-xs font-medium">Examinations</span>
           </TabsTrigger>
           
           <TabsTrigger 
@@ -450,19 +520,22 @@ const PatientTabs: React.FC<PatientTabsProps> = ({
             )}
           </TabsContent>
           
-          {/* Body Diagram Tab */}
-          <TabsContent value="bodyDiagram">
-            <h3 className="text-xl font-bold mb-4">Body Diagram</h3>
-            <div className="bg-white border border-border rounded-lg p-4 shadow-sm">
-              <BodyDiagram 
-                conditions={patient.bodyConditions} 
-                onAddCondition={isDoctor ? onAddCondition : undefined} 
-                readOnly={!isDoctor}
-              />
+          {/* Conditions Tab */}
+          <TabsContent value="conditions">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold">Medical Conditions</h3>
+              {isDoctor && (
+                <Button 
+                  size="sm"
+                  onClick={() => onAddCondition && onAddCondition('head')}
+                >
+                  Add Condition
+                </Button>
+              )}
             </div>
-            {patient && patient.bodyConditions && patient.bodyConditions.length > 0 && (
+            
+            {patient && patient.bodyConditions && patient.bodyConditions.length > 0 ? (
               <div className="mt-4 space-y-2">
-                <h4 className="font-medium">Documented Conditions:</h4>
                 {patient.bodyConditions.map((condition, index) => (
                   <div key={index} className="bg-muted/50 p-3 rounded-md">
                     <div className="flex justify-between">
@@ -474,15 +547,112 @@ const PatientTabs: React.FC<PatientTabsProps> = ({
                   </div>
                 ))}
               </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">No medical conditions documented</p>
+              </div>
             )}
           </TabsContent>
           
-          {/* Imaging Tab */}
-          <TabsContent value="imaging">
-            <h3 className="text-xl font-bold mb-4">Imaging Examinations</h3>
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">No imaging records available</p>
+          {/* Examinations Tab */}
+          <TabsContent value="examinations">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold">Medical Examinations</h3>
+              {isDoctor && (
+                <Button 
+                  size="sm"
+                  onClick={onAddExamination}
+                >
+                  Add Examination
+                </Button>
+              )}
             </div>
+            
+            {isDoctor && (
+              <Form {...examinationForm}>
+                <form onSubmit={examinationForm.handleSubmit(handleExaminationSubmit)} className="space-y-4 mb-6 p-4 border border-border rounded-md">
+                  <h4 className="font-medium">Add New Examination</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={examinationForm.control}
+                      name="date"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Date</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={examinationForm.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Examination Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Examination name..." {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <FormField
+                    control={examinationForm.control}
+                    name="notes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Notes</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Examination notes..." 
+                            {...field} 
+                            rows={3}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <div className="flex justify-end">
+                    <Button type="submit">Save Examination</Button>
+                  </div>
+                </form>
+              </Form>
+            )}
+            
+            {patient && patient.examinations && patient.examinations.length > 0 ? (
+              <div className="space-y-4">
+                {patient.examinations.map((exam, index) => (
+                  <div 
+                    key={index} 
+                    className="border border-border rounded-md p-3 shadow-sm cursor-pointer"
+                    onClick={() => toggleExaminationItem(`exam-${index}`)}
+                  >
+                    <div className="flex justify-between items-center mb-2">
+                      <h4 className="font-medium">{exam.name}</h4>
+                      <span className="text-xs text-muted-foreground">{exam.date}</span>
+                    </div>
+                    {expandedExamination === `exam-${index}` ? (
+                      <p className="text-sm">{exam.notes}</p>
+                    ) : (
+                      <p className="text-sm text-muted-foreground truncate">
+                        {exam.notes}
+                      </p>
+                    )}
+                    {exam.notes && (
+                      <p className="text-xs text-primary mt-2">
+                        {expandedExamination === `exam-${index}` ? "Click to collapse" : "Click to expand"}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">No examination records available</p>
+              </div>
+            )}
           </TabsContent>
           
           {/* Medical History Tab */}

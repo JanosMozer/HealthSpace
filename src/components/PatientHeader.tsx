@@ -1,7 +1,8 @@
 
 import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/use-auth';
 
 interface PatientHeaderProps {
   connectionStatus: any;
@@ -10,20 +11,41 @@ interface PatientHeaderProps {
 
 const PatientHeader = ({ connectionStatus, patientName = 'Patient Profile' }: PatientHeaderProps) => {
   const navigate = useNavigate();
+  const { logout } = useAuth();
+  const userType = sessionStorage.getItem('userType');
+
+  const handleBack = () => {
+    if (userType === 'doctor') {
+      navigate('/doctor-dashboard');
+    } else {
+      logout();
+    }
+  };
 
   return (
     <>
       <header className="border-b border-border bg-primary">
-        <div className="container max-w-7xl mx-auto flex h-16 items-center px-4">
+        <div className="container max-w-7xl mx-auto flex h-16 items-center justify-between px-4">
+          <div className="flex items-center">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={handleBack}
+              className="mr-4 text-white hover:bg-primary/80"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <h1 className="text-lg font-bold text-white">{patientName}</h1>
+          </div>
+          
           <Button 
             variant="ghost" 
             size="icon" 
-            onClick={() => navigate('/doctor-dashboard')}
-            className="mr-4 text-white hover:bg-primary/80"
+            onClick={logout}
+            className="text-white hover:bg-primary/80"
           >
-            <ArrowLeft className="h-5 w-5" />
+            <LogOut className="h-5 w-5" />
           </Button>
-          <h1 className="text-lg font-bold text-white">{patientName}</h1>
         </div>
       </header>
 

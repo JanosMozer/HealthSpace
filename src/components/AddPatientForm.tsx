@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -15,22 +16,26 @@ const AddPatientForm = () => {
     email: '',
     dob: '',
     gender: 'Not Specified',
-    profileType: 'patient', // Default to patient for doctors adding patients
-    patientId: generateRandomId(),
+    profileType: 'patient',
+    patientId: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<boolean | null>(null);
+  const [errors, setErrors] = useState<Record<string, boolean>>({});
+  
   const navigate = useNavigate();
   const { toast } = useToast();
-  
-  // Generate a random 9-digit ID
-  function generateRandomId() {
-    return Math.floor(100000000 + Math.random() * 900000000).toString();
-  }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // Clear error when field is modified
+    if (errors[name]) {
+      const newErrors = { ...errors };
+      delete newErrors[name];
+      setErrors(newErrors);
+    }
   };
 
   const handleProfileTypeChange = (value: string) => {
@@ -54,6 +59,20 @@ const AddPatientForm = () => {
     return age;
   };
 
+  const validateField = (name: string, value: string) => {
+    const newErrors = { ...errors };
+    const isEmpty = !value.trim();
+    
+    if (isEmpty) {
+      newErrors[name] = true;
+    } else {
+      delete newErrors[name];
+    }
+    
+    setErrors(newErrors);
+    return !isEmpty;
+  };
+
   // Check connection on component mount
   useState(() => {
     const checkConnection = async () => {
@@ -73,115 +92,85 @@ const AddPatientForm = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate all fields
+    const isNameValid = validateField('name', formData.name);
+    const isDobValid = validateField('dob', formData.dob);
+    const isIdValid = validateField('patientId', formData.patientId);
+    
+    if (!isNameValid || !isDobValid || !isIdValid) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required fields",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     setIsSubmitting(true);
     
-    if (formData.profileType === 'patient') {
-      try {
-        // Calculate age from DOB
-        const age = calculateAge(formData.dob);
-        
-        console.log("Attempting to create patient with data:", {
+    try {
+      // Calculate age from DOB
+      const age = calculateAge(formData.dob);
+      
+      console.log("Attempting to create patient with data:", {
+        identifier: formData.patientId,
+        name: formData.name,
+        dob: formData.dob,
+        gender: formData.gender,
+        age
+      });
+      
+      // Insert into Supabase
+      const { data, error } = await supabase
+        .from('patients')
+        .insert({
           identifier: formData.patientId,
           name: formData.name,
           dob: formData.dob,
           gender: formData.gender,
-          age
-        });
+          age: age
+        })
+        .select();
         
-        // Insert into Supabase
-        const { data, error } = await supabase
-          .from('patients')
-          .insert({
-            identifier: formData.patientId,
-            name: formData.name,
-            dob: formData.dob,
-            gender: formData.gender,
-            age: age
-          })
-          .select();
-          
-        console.log("Patient creation result:", { data, error });
-        
-        if (error) {
-          if (error.code === '42501') {
-            console.error("Permission denied error. This is likely due to RLS policies.");
-            toast({
-              title: "Permission Error",
-              description: "Your account doesn't have permission to create patients. Please check database permissions.",
-              variant: "destructive"
-            });
-          } else {
-             console.error("Error creating patient:", error);
-             toast({
-               title: "Error",
-               description: "Failed to create patient profile. Please try again.",
-               variant: "destructive"
-             });
-            // throw error; // Re-throwing might be appropriate depending on desired flow
-          }
-          setIsSubmitting(false); // Ensure button is re-enabled on error
-          return; // Stop execution if there was an error
-        }
-
-        toast({
-          title: "Patient profile created",
-          description: `Patient ID: ${formData.patientId}`,
-        });
-        
-        // Navigate to the patient profile
-        navigate(`/patient-profile/${formData.patientId}`);
-      } catch (error) {
-        console.error("Error creating patient:", error);
-        toast({
-          title: "Error",
-          description: "Failed to create patient profile. Please try again.",
-          variant: "destructive"
-        });
-      } finally {
-        setIsSubmitting(false);
-      }
-    } else {
-      // Doctor creation - for development purposes only
-      try {
-        const { data, error } = await supabase
-          .from('doctors')
-          .insert({
-            email: formData.email,
-            name: formData.name,
-            workplace: "Hospital",
-            identifier: formData.patientId
-          })
-          .select();
-          
-        console.log("Doctor creation result:", { data, error });
-        
-        if (error) {
-          console.error("Doctor registration error:", error);
+      console.log("Patient creation result:", { data, error });
+      
+      if (error) {
+        if (error.code === '42501') {
+          console.error("Permission denied error. This is likely due to RLS policies.");
           toast({
-            title: "Registration failed",
-            description: "An unexpected error occurred. Please try again.",
+            title: "Permission Error",
+            description: "Your account doesn't have permission to create patients. Please check database permissions.",
             variant: "destructive"
           });
-          setIsSubmitting(false);
-          return;
+        } else {
+           console.error("Error creating patient:", error);
+           toast({
+             title: "Error",
+             description: "Failed to create patient profile. Please try again.",
+             variant: "destructive"
+           });
         }
-        
-        toast({
-          title: "Profile created successfully",
-          description: `Doctor account created for ${formData.email}`,
-        });
-        
-        navigate('/doctor-dashboard');
-      } catch (error) {
-        console.error("Error creating doctor:", error);
-        toast({
-          title: "Registration failed",
-          description: "An unexpected error occurred. Please try again.",
-          variant: "destructive"
-        });
-      } finally {
         setIsSubmitting(false);
+        return;
       }
+
+      toast({
+        title: "Patient profile created",
+        description: `Patient ID: ${formData.patientId}`,
+      });
+      
+      // Navigate to the patient profile
+      navigate(`/patient-profile/${formData.patientId}`);
+    } catch (error) {
+      console.error("Error creating patient:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create patient profile. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -214,8 +203,10 @@ const AddPatientForm = () => {
             name="name"
             value={formData.name}
             onChange={handleInputChange}
+            className={errors.name ? 'border-red-500 focus-visible:ring-red-500' : ''}
             required
           />
+          {errors.name && <p className="text-xs text-red-500">Patient name is required</p>}
         </div>
         
         <div className="space-y-2">
@@ -226,8 +217,10 @@ const AddPatientForm = () => {
             type="date"
             value={formData.dob}
             onChange={handleInputChange}
+            className={errors.dob ? 'border-red-500 focus-visible:ring-red-500' : ''}
             required
           />
+          {errors.dob && <p className="text-xs text-red-500">Date of birth is required</p>}
         </div>
         
         <div className="space-y-2">
@@ -249,16 +242,19 @@ const AddPatientForm = () => {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="patientId">Patient ID (Auto-generated)</Label>
+          <Label htmlFor="patientId">Patient ID</Label>
           <Input
             id="patientId"
             name="patientId"
+            placeholder="Enter patient ID"
             value={formData.patientId}
-            readOnly
-            className="bg-muted"
+            onChange={handleInputChange}
+            className={errors.patientId ? 'border-red-500 focus-visible:ring-red-500' : ''}
+            required
           />
+          {errors.patientId && <p className="text-xs text-red-500">Patient ID is required</p>}
           <p className="text-xs text-muted-foreground">
-            Patient will use this ID and their birth date (YYYY-MM-DD) to log in
+            Patient will use this ID and their birth date to log in
           </p>
         </div>
 
