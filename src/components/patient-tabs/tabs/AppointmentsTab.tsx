@@ -8,6 +8,7 @@ import { ChevronDown, ChevronUp, Clock, Calendar } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { format, parseISO, isAfter, startOfDay } from 'date-fns';
 import { Patient, Appointment } from '@/types/patient';
+import { supabase } from '@/lib/supabase'; // Added the missing import
 
 interface AppointmentsTabProps {
   patient: Patient;
