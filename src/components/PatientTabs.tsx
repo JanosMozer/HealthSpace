@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
-import { CalendarDays, Pill, FileText, Image } from 'lucide-react';
+import { CalendarDays, Pill, FileText, Image, ChevronDown, ChevronUp, Clock, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BodyPart, Patient } from '@/types/patient';
 import { Form, FormField, FormItem, FormLabel, FormControl } from '@/components/ui/form';
@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useForm } from 'react-hook-form';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
+import { format, parseISO, isAfter, startOfDay } from 'date-fns';
 
 interface PatientTabsProps {
   patient: Patient;
@@ -36,11 +37,15 @@ const PatientTabs: React.FC<PatientTabsProps> = ({
   const { toast } = useToast();
   const [expandedHistory, setExpandedHistory] = useState<string | null>(null);
   const [expandedExamination, setExpandedExamination] = useState<string | null>(null);
+  const [showPastAppointments, setShowPastAppointments] = useState(false);
+  const [showPastMedications, setShowPastMedications] = useState(false);
+  const today = startOfDay(new Date());
   
   // Form for adding appointments
   const appointmentForm = useForm({
     defaultValues: {
-      date: '',
+      date: new Date().toISOString().split('T')[0],
+      time: '09:00',
       type: '',
       place: '',
     }
@@ -61,6 +66,15 @@ const PatientTabs: React.FC<PatientTabsProps> = ({
       name: '',
       dosage: '',
       since: new Date().toISOString().split('T')[0],
+      current: true,
+    }
+  });
+  
+  // Form for adding conditions with body part
+  const conditionForm = useForm({
+    defaultValues: {
+      bodyPart: 'head' as BodyPart,
+      description: '',
     }
   });
   
@@ -83,6 +97,45 @@ const PatientTabs: React.FC<PatientTabsProps> = ({
     setExpandedExamination(expandedExamination === id ? null : id);
   };
   
+  // Toggle past appointments visibility
+  const togglePastAppointments = () => {
+    setShowPastAppointments(!showPastAppointments);
+  };
+  
+  // Toggle past medications visibility
+  const togglePastMedications = () => {
+    setShowPastMedications(!showPastMedications);
+  };
+  
+  // Format appointment date with time
+  const formatAppointmentDateTime = (date: string, time?: string) => {
+    if (!date) return 'No date';
+    
+    try {
+      if (time) {
+        return `${format(parseISO(date), 'MMM dd, yyyy')} at ${time}`;
+      }
+      return format(parseISO(date), 'MMM dd, yyyy');
+    } catch (e) {
+      return date;
+    }
+  };
+  
+  // Check if date is in the future
+  const isFutureDate = (dateStr: string) => {
+    try {
+      const date = parseISO(dateStr);
+      return isAfter(date, today);
+    } catch (e) {
+      return false;
+    }
+  };
+  
+  // Filter appointments by status (pending or past)
+  const filterAppointments = (appointments = [], pending = true) => {
+    return appointments.filter(app => pending ? isFutureDate(app.date) : !isFutureDate(app.date));
+  };
+  
   // Submit appointment form
   const handleAppointmentSubmit = async (data: any) => {
     if (!patient.id) {
@@ -102,6 +155,7 @@ const PatientTabs: React.FC<PatientTabsProps> = ({
           date: data.date,
           type: data.type,
           place: data.place,
+          time: data.time, // Add time field
         });
         
       if (error) throw error;
@@ -120,6 +174,7 @@ const PatientTabs: React.FC<PatientTabsProps> = ({
               date: data.date,
               type: data.type,
               place: data.place,
+              time: data.time, // Include time in the state
             }
           ]
         }));
@@ -210,6 +265,7 @@ const PatientTabs: React.FC<PatientTabsProps> = ({
           name: data.name,
           dosage: data.dosage,
           since: data.since,
+          current: data.current, // Add current field
         });
         
       if (error) throw error;
@@ -228,6 +284,7 @@ const PatientTabs: React.FC<PatientTabsProps> = ({
               name: data.name,
               since: data.since,
               medications: [data.dosage],
+              current: data.current, // Include current status
             }
           ]
         }));
@@ -240,6 +297,58 @@ const PatientTabs: React.FC<PatientTabsProps> = ({
       toast({
         title: "Error",
         description: "Failed to add medication",
+        variant: "destructive"
+      });
+    }
+  };
+  
+  // Submit condition form
+  const handleConditionSubmit = async (data: any) => {
+    if (!patient.id) {
+      toast({
+        title: "Error",
+        description: "Patient ID is missing",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    try {
+      const { error } = await supabase
+        .from('conditions')
+        .insert({
+          patient_id: patient.id,
+          body_part: data.bodyPart,
+          description: data.description,
+        });
+        
+      if (error) throw error;
+      
+      toast({
+        title: "Success",
+        description: "Condition added successfully"
+      });
+      
+      if (setPatient) {
+        setPatient(prev => ({
+          ...prev,
+          bodyConditions: [
+            ...prev.bodyConditions,
+            {
+              bodyPart: data.bodyPart,
+              description: data.description,
+            }
+          ]
+        }));
+      }
+      
+      conditionForm.reset();
+      
+    } catch (error) {
+      console.error('Error adding condition:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add condition",
         variant: "destructive"
       });
     }
@@ -298,6 +407,34 @@ const PatientTabs: React.FC<PatientTabsProps> = ({
       });
     }
   };
+
+  // Get list of body parts for dropdown
+  const bodyPartOptions = [
+    { value: 'head', label: 'Head' },
+    { value: 'brain', label: 'Brain' },
+    { value: 'thyroid', label: 'Thyroid' },
+    { value: 'heart', label: 'Heart' },
+    { value: 'lungs', label: 'Lungs' },
+    { value: 'liver', label: 'Liver' },
+    { value: 'stomach', label: 'Stomach' },
+    { value: 'pancreas', label: 'Pancreas' },
+    { value: 'smallIntestine', label: 'Small Intestine' },
+    { value: 'largeIntestine', label: 'Large Intestine' },
+    { value: 'kidneys', label: 'Kidneys' },
+    { value: 'bladder', label: 'Bladder' },
+    { value: 'leftArm', label: 'Left Arm' },
+    { value: 'rightArm', label: 'Right Arm' },
+    { value: 'leftLeg', label: 'Left Leg' },
+    { value: 'rightLeg', label: 'Right Leg' }
+  ];
+
+  // Divide medications by current status
+  const currentMedications = patient?.currentConditions?.filter(med => med.current !== false) || [];
+  const pastMedications = patient?.currentConditions?.filter(med => med.current === false) || [];
+
+  // Divide appointments by pending vs past
+  const pendingAppointments = patient?.appointments ? filterAppointments(patient.appointments, true) : [];
+  const pastAppointments = patient?.appointments ? filterAppointments(patient.appointments, false) : [];
 
   return (
     <Card className="mt-6">
@@ -363,7 +500,7 @@ const PatientTabs: React.FC<PatientTabsProps> = ({
               <Form {...appointmentForm}>
                 <form onSubmit={appointmentForm.handleSubmit(handleAppointmentSubmit)} className="space-y-4 mb-6 p-4 border border-border rounded-md">
                   <h4 className="font-medium">Add New Appointment</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <FormField
                       control={appointmentForm.control}
                       name="date"
@@ -371,7 +508,25 @@ const PatientTabs: React.FC<PatientTabsProps> = ({
                         <FormItem>
                           <FormLabel>Date</FormLabel>
                           <FormControl>
-                            <Input type="date" {...field} />
+                            <div className="flex items-center">
+                              <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
+                              <Input type="date" {...field} />
+                            </div>
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={appointmentForm.control}
+                      name="time"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Time</FormLabel>
+                          <FormControl>
+                            <div className="flex items-center">
+                              <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
+                              <Input type="time" {...field} />
+                            </div>
                           </FormControl>
                         </FormItem>
                       )}
@@ -408,29 +563,76 @@ const PatientTabs: React.FC<PatientTabsProps> = ({
               </Form>
             )}
             
-            {patient && patient.appointments && patient.appointments.length > 0 ? (
-              <div className="space-y-4">
-                {patient.appointments.map((appointment, index) => (
-                  <div key={index} className="border border-border rounded-md p-3 shadow-sm">
-                    <div className="flex justify-between items-center mb-2">
-                      <h4 className="font-medium">{appointment.type}</h4>
-                      <span className="text-xs text-muted-foreground">{appointment.date}</span>
-                    </div>
-                    <p className="text-sm">Location: {appointment.place}</p>
+            <div className="space-y-6">
+              {/* Pending Appointments Section */}
+              <div>
+                <h4 className="font-medium mb-3">Upcoming Appointments</h4>
+                {pendingAppointments.length > 0 ? (
+                  <div className="space-y-4">
+                    {pendingAppointments.map((appointment, index) => (
+                      <div key={`pending-${index}`} className="border border-border rounded-md p-3 shadow-sm bg-muted/20">
+                        <div className="flex justify-between items-center mb-2">
+                          <h4 className="font-medium">{appointment.type}</h4>
+                          <span className="text-xs text-muted-foreground">
+                            {formatAppointmentDateTime(appointment.date, appointment.time)}
+                          </span>
+                        </div>
+                        <p className="text-sm">Location: {appointment.place}</p>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                ) : (
+                  <div className="text-center py-4 border border-dashed rounded-md border-muted-foreground/30">
+                    <p className="text-muted-foreground">No upcoming appointments</p>
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">No scheduled appointments</p>
+              
+              {/* Past Appointments Section with Toggle */}
+              <div>
+                <div 
+                  className="flex items-center justify-between cursor-pointer mb-3"
+                  onClick={togglePastAppointments}
+                >
+                  <h4 className="font-medium">Past Appointments</h4>
+                  <Button variant="ghost" size="sm" className="h-8">
+                    {showPastAppointments ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+                
+                {showPastAppointments && pastAppointments.length > 0 ? (
+                  <div className="space-y-4">
+                    {pastAppointments.map((appointment, index) => (
+                      <div key={`past-${index}`} className="border border-border rounded-md p-3 shadow-sm opacity-70">
+                        <div className="flex justify-between items-center mb-2">
+                          <h4 className="font-medium">{appointment.type}</h4>
+                          <span className="text-xs text-muted-foreground">
+                            {formatAppointmentDateTime(appointment.date, appointment.time)}
+                          </span>
+                        </div>
+                        <p className="text-sm">Location: {appointment.place}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  showPastAppointments && (
+                    <div className="text-center py-4 border border-dashed rounded-md border-muted-foreground/30">
+                      <p className="text-muted-foreground">No past appointments</p>
+                    </div>
+                  )
+                )}
               </div>
-            )}
+            </div>
           </TabsContent>
           
           {/* Medications Tab */}
           <TabsContent value="medications">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold">Current Medications</h3>
+              <h3 className="text-xl font-bold">Medications</h3>
               {isDoctor && (
                 <Button 
                   size="sm"
@@ -445,7 +647,7 @@ const PatientTabs: React.FC<PatientTabsProps> = ({
               <Form {...medicationForm}>
                 <form onSubmit={medicationForm.handleSubmit(handleMedicationSubmit)} className="space-y-4 mb-6 p-4 border border-border rounded-md">
                   <h4 className="font-medium">Add New Medication</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <FormField
                       control={medicationForm.control}
                       name="name"
@@ -482,6 +684,23 @@ const PatientTabs: React.FC<PatientTabsProps> = ({
                         </FormItem>
                       )}
                     />
+                    <FormField
+                      control={medicationForm.control}
+                      name="current"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-end space-x-2">
+                          <FormControl>
+                            <input 
+                              type="checkbox" 
+                              checked={field.value} 
+                              onChange={e => field.onChange(e.target.checked)} 
+                              className="h-4 w-4"
+                            />
+                          </FormControl>
+                          <FormLabel>Currently Active</FormLabel>
+                        </FormItem>
+                      )}
+                    />
                   </div>
                   <div className="flex justify-end">
                     <Button type="submit">Save Medication</Button>
@@ -490,34 +709,87 @@ const PatientTabs: React.FC<PatientTabsProps> = ({
               </Form>
             )}
             
-            {patient && patient.currentConditions && patient.currentConditions.length > 0 ? (
-              <div className="divide-y divide-border">
-                {patient.currentConditions.map((condition, index) => (
-                  <div key={index} className="py-3">
-                    <div className="flex flex-wrap justify-between items-start">
-                      <div>
-                        <h4 className="font-medium">{condition.name}</h4>
-                        <p className="text-sm text-muted-foreground">Since {condition.since}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xs text-muted-foreground mb-1">Dosage</p>
-                        <div className="flex flex-wrap justify-end gap-1">
-                          {condition.medications.map((med, idx) => (
-                            <span key={idx} className="text-xs px-2 py-1 rounded-full bg-muted">
-                              {med}
-                            </span>
-                          ))}
+            <div className="space-y-6">
+              {/* Current Medications Section */}
+              <div>
+                <h4 className="font-medium mb-3">Current Medications</h4>
+                {currentMedications.length > 0 ? (
+                  <div className="divide-y divide-border">
+                    {currentMedications.map((med, index) => (
+                      <div key={`current-${index}`} className="py-3">
+                        <div className="flex flex-wrap justify-between items-start">
+                          <div>
+                            <h4 className="font-medium">{med.name}</h4>
+                            <p className="text-sm text-muted-foreground">Since {med.since}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xs text-muted-foreground mb-1">Dosage</p>
+                            <div className="flex flex-wrap justify-end gap-1">
+                              {med.medications.map((m, idx) => (
+                                <span key={idx} className="text-xs px-2 py-1 rounded-full bg-muted">
+                                  {m}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    ))}
                   </div>
-                ))}
+                ) : (
+                  <div className="text-center py-4 border border-dashed rounded-md border-muted-foreground/30">
+                    <p className="text-muted-foreground">No current medications</p>
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">No current medications</p>
+              
+              {/* Past Medications Section with Toggle */}
+              <div>
+                <div 
+                  className="flex items-center justify-between cursor-pointer mb-3"
+                  onClick={() => setShowPastMedications(!showPastMedications)}
+                >
+                  <h4 className="font-medium">Past Medications</h4>
+                  <Button variant="ghost" size="sm" className="h-8">
+                    {showPastMedications ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+                
+                {showPastMedications && pastMedications.length > 0 ? (
+                  <div className="divide-y divide-border opacity-70">
+                    {pastMedications.map((med, index) => (
+                      <div key={`past-${index}`} className="py-3">
+                        <div className="flex flex-wrap justify-between items-start">
+                          <div>
+                            <h4 className="font-medium">{med.name}</h4>
+                            <p className="text-sm text-muted-foreground">Since {med.since}</p>
+                          </div>
+                          <div className="text-right">
+                            <div className="flex flex-wrap justify-end gap-1">
+                              {med.medications.map((m, idx) => (
+                                <span key={idx} className="text-xs px-2 py-1 rounded-full bg-muted">
+                                  {m}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  showPastMedications && (
+                    <div className="text-center py-4 border border-dashed rounded-md border-muted-foreground/30">
+                      <p className="text-muted-foreground">No past medications</p>
+                    </div>
+                  )
+                )}
               </div>
-            )}
+            </div>
           </TabsContent>
           
           {/* Conditions Tab */}
@@ -534,13 +806,60 @@ const PatientTabs: React.FC<PatientTabsProps> = ({
               )}
             </div>
             
+            {isDoctor && (
+              <Form {...conditionForm}>
+                <form onSubmit={conditionForm.handleSubmit(handleConditionSubmit)} className="space-y-4 mb-6 p-4 border border-border rounded-md">
+                  <h4 className="font-medium">Add New Condition</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={conditionForm.control}
+                      name="bodyPart"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Body Part</FormLabel>
+                          <FormControl>
+                            <select 
+                              className="w-full border border-border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                              {...field}
+                            >
+                              {bodyPartOptions.map(option => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
+                            </select>
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={conditionForm.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Condition Description</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Describe the condition..." {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <div className="flex justify-end">
+                    <Button type="submit">Save Condition</Button>
+                  </div>
+                </form>
+              </Form>
+            )}
+            
             {patient && patient.bodyConditions && patient.bodyConditions.length > 0 ? (
               <div className="mt-4 space-y-2">
                 {patient.bodyConditions.map((condition, index) => (
                   <div key={index} className="bg-muted/50 p-3 rounded-md">
                     <div className="flex justify-between">
                       <span className="font-medium capitalize">
-                        {condition.bodyPart.replace(/([A-Z])/g, ' $1').trim()}
+                        {bodyPartOptions.find(bp => bp.value === condition.bodyPart)?.label || 
+                          condition.bodyPart.replace(/([A-Z])/g, ' $1').trim()}
                       </span>
                     </div>
                     <p className="text-sm mt-1">{condition.description}</p>

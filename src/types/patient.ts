@@ -27,6 +27,7 @@ export interface Condition {
 // Appointment
 export interface Appointment {
   date: string;
+  time?: string;
   type: string;
   place: string;
 }
@@ -50,6 +51,7 @@ export interface Patient {
     name: string;
     since: string;
     medications: string[];
+    current?: boolean;
   }[];
   medicalHistory: {
     date: string;

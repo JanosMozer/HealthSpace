@@ -95,6 +95,7 @@ export interface Database {
           name: string
           dosage: string
           since: string
+          current: boolean
           created_at: string
         }
         Insert: {
@@ -103,6 +104,7 @@ export interface Database {
           name: string
           dosage: string
           since: string
+          current?: boolean
           created_at?: string
         }
         Update: {
@@ -111,6 +113,7 @@ export interface Database {
           name?: string
           dosage?: string
           since?: string
+          current?: boolean
           created_at?: string
         }
       }
@@ -145,6 +148,7 @@ export interface Database {
           id: string
           patient_id: string
           date: string
+          time: string
           type: string
           place: string
           created_at: string
@@ -153,6 +157,7 @@ export interface Database {
           id?: string
           patient_id: string
           date: string
+          time?: string
           type: string
           place: string
           created_at?: string
@@ -161,6 +166,7 @@ export interface Database {
           id?: string
           patient_id?: string
           date?: string
+          time?: string
           type?: string
           place?: string
           created_at?: string
