@@ -2,9 +2,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import PatientInfo from '@/components/PatientInfo';
-import PatientTabs from '@/components/PatientTabs';
+import PatientTabs from '@/components/patient-tabs/PatientTabs';
 import { useToast } from '@/hooks/use-toast';
-import { BodyPart, Patient, Examination } from '@/types/patient';
+import { BodyPart, Patient } from '@/types/patient';
 import { supabase, getSupabaseStatus, initializeDatabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/use-auth';
 import PatientHeader from '@/components/PatientHeader';
