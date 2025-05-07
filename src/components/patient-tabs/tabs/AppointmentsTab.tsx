@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -21,11 +20,10 @@ const AppointmentsTab = ({ patient, isDoctor, onAddAppointment, setPatient }: Ap
   const [showPastAppointments, setShowPastAppointments] = useState(false);
   const today = startOfDay(new Date());
   
-  // Form for adding appointments
   const appointmentForm = useForm({
     defaultValues: {
       date: new Date().toISOString().split('T')[0],
-      time: '09:00',
+      time: '09:00', // Added time back
       type: '',
       place: '',
     }
@@ -67,42 +65,54 @@ const AppointmentsTab = ({ patient, isDoctor, onAddAppointment, setPatient }: Ap
 
   // Submit appointment form
   const handleAppointmentSubmit = async (data: any) => {
-    if (!patient.id) {
+    if (!patient.identifier) {
+      console.error("Patient identifier is missing in AppointmentsTab");
       return;
     }
     
     try {
-      const { error } = await supabase
-        .from('appointments')
-        .insert({
-          patient_id: patient.id,
-          date: data.date,
-          type: data.type,
-          place: data.place,
-          time: data.time,
-        });
+      const payload = {
+        patient_id: patient.identifier,
+        date: data.date,
+        time: data.time, // Added time back
+        type: data.type,
+        place: data.place,
+      };
+      console.log("Submitting appointment (AppointmentsTab):", payload);
+
+      const { data: insertedData, error: insertError } = await supabase // Capture insertedData
+        .from('appointment')
+        .insert(payload)
+        .select(); // Select the inserted row
         
-      if (error) throw error;
+      if (insertError) {
+        console.error('Error adding appointment (AppointmentsTab):', insertError);
+        // Add toast notification for error
+        return;
+      }
       
-      if (setPatient) {
+      if (setPatient && insertedData && insertedData.length > 0) {
+        const newAppointmentEntry = {
+          id: insertedData[0].id, // Use ID from DB
+          date: insertedData[0].date,
+          time: insertedData[0].time, // Added time back
+          type: insertedData[0].type,
+          place: insertedData[0].place,
+        };
         setPatient(prev => ({
           ...prev,
           appointments: [
             ...(prev.appointments || []),
-            {
-              date: data.date,
-              type: data.type,
-              place: data.place,
-              time: data.time,
-            }
+            newAppointmentEntry
           ]
         }));
       }
       
       appointmentForm.reset();
-      
+      // Add toast notification for success
     } catch (error) {
-      console.error('Error adding appointment:', error);
+      console.error('Error adding appointment (AppointmentsTab catch block):', error);
+      // Add toast notification for error
     }
   };
 
@@ -146,7 +156,7 @@ const AppointmentsTab = ({ patient, isDoctor, onAddAppointment, setPatient }: Ap
               />
               <FormField
                 control={appointmentForm.control}
-                name="time"
+                name="time" // Added time field back
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Time</FormLabel>

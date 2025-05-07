@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import PatientInfo from '@/components/PatientInfo';
@@ -93,13 +92,12 @@ const PatientProfile = () => {
       }
       
       try {
-        console.log("Fetching patient with ID:", patientId);
+        console.log("Fetching patient with ID (identifier):", patientId);
         
-        // First try direct patient data fetch
         const { data: patientsData, error: patientsError } = await supabase
           .from('patients')
           .select('*')
-          .eq('identifier', patientId);
+          .eq('identifier', patientId); // patientId from URL is the identifier
         
         if (patientsError) {
           console.error('Error fetching patients:', patientsError);
@@ -121,23 +119,24 @@ const PatientProfile = () => {
           return;
         }
 
-        // Use the first patient found
         const patientData = patientsData[0];
         console.log("Patient data retrieved:", patientData);
         
-        // Try to fetch related data with proper error handling
+        // patientData.id is the UUID, patientData.identifier is the int8
+        const patientIdentifierForQueries = patientData.identifier; 
+        const patientUUIDForState = patientData.id;
+
         let conditionsData: any[] = [];
         let medicationsData: any[] = [];
         let historyData: any[] = [];
         let appointmentsData: any[] = [];
-        let examinationsData: any[] = [];
-        
+        // let examinationsData: any[] = []; // Examinations temporarily disabled
+
         try {
-          // Fetch conditions
           const { data: conditions, error: conditionsError } = await supabase
             .from('conditions')
             .select('*')
-            .eq('patient_id', patientData.id);
+            .eq('patient_id', patientIdentifierForQueries); // Use identifier
           
           if (conditionsError) {
             console.error('Error fetching conditions:', conditionsError);
@@ -149,11 +148,10 @@ const PatientProfile = () => {
         }
         
         try {
-          // Fetch medications
           const { data: medications, error: medicationsError } = await supabase
             .from('medications')
             .select('*')
-            .eq('patient_id', patientData.id);
+            .eq('patient_id', patientIdentifierForQueries); // Use identifier
           
           if (medicationsError) {
             console.error('Error fetching medications:', medicationsError);
@@ -165,11 +163,10 @@ const PatientProfile = () => {
         }
         
         try {
-          // Fetch medical history
           const { data: history, error: historyError } = await supabase
             .from('medical_history')
             .select('*')
-            .eq('patient_id', patientData.id)
+            .eq('patient_id', patientIdentifierForQueries) // Use identifier
             .order('date', { ascending: false });
           
           if (historyError) {
@@ -182,44 +179,43 @@ const PatientProfile = () => {
         }
         
         try {
-          // Fetch appointments
-          const { data: appointments, error: appointmentsError } = await supabase
-            .from('appointments')
+          const { data: appointmentsResult, error: appointmentsError } = await supabase
+            .from('appointment') // Singular table name
             .select('*')
-            .eq('patient_id', patientData.id)
+            .eq('patient_id', patientIdentifierForQueries) // Use identifier
             .order('date', { ascending: true });
           
           if (appointmentsError) {
             console.error('Error fetching appointments:', appointmentsError);
-          } else if (appointments) {
-            appointmentsData = appointments;
+          } else if (appointmentsResult) {
+            appointmentsData = appointmentsResult;
           }
         } catch (e) {
           console.error('Failed to fetch appointments:', e);
         }
         
-        try {
-          // Fetch examinations
-          const { data: examinations, error: examinationsError } = await supabase
-            .from('examinations')
-            .select('*')
-            .eq('patient_id', patientData.id)
-            .order('date', { ascending: false });
+        // try {
+        //   // Fetch examinations - Temporarily disabled
+        //   const { data: examinations, error: examinationsError } = await supabase
+        //     .from('examinations')
+        //     .select('*')
+        //     .eq('patient_id', patientIdentifierForQueries) // Use identifier
+        //     .order('date', { ascending: false });
           
-          if (examinationsError) {
-            console.error('Error fetching examinations:', examinationsError);
-          } else if (examinations) {
-            examinationsData = examinations;
-          }
-        } catch (e) {
-          console.error('Failed to fetch examinations:', e);
-        }
+        //   if (examinationsError) {
+        //     console.error('Error fetching examinations:', examinationsError);
+        //   } else if (examinations) {
+        //     examinationsData = examinations;
+        //   }
+        // } catch (e) {
+        //   console.error('Failed to fetch examinations:', e);
+        // }
         
-        // Transform data for our components
         const currentConditions = medicationsData?.map(med => ({
           name: med.name,
           since: med.since,
           medications: [med.dosage],
+          current: med.current, // Keep current as it's in the DB
         })) || [];
         
         const medicalHistory = historyData?.map(record => ({
@@ -237,26 +233,27 @@ const PatientProfile = () => {
           date: appointment.date,
           type: appointment.type,
           place: appointment.place,
+          time: appointment.time, // Remove time if not in 'appointment' table
         })) || [];
         
-        const examinations = examinationsData?.map(exam => ({
-          date: exam.date,
-          name: exam.name,
-          notes: exam.notes,
-        })) || [];
+        // const examinations = examinationsData?.map(exam => ({ // Temporarily disabled
+        //   date: exam.date,
+        //   name: exam.name,
+        //   notes: exam.notes,
+        // })) || [];
         
         setPatient({
-          id: patientData.id,
+          id: patientUUIDForState, // Use UUID for frontend state's main ID
           name: patientData.name || 'Patient',
           age: patientData.age || 0,
           dob: patientData.dob || '',
           gender: patientData.gender || '',
-          identifier: patientData.identifier || patientId,
+          identifier: patientIdentifierForQueries, // Store the numeric identifier
           currentConditions,
           medicalHistory,
           bodyConditions,
           appointments,
-          examinations,
+          examinations: [], // Default to empty array as it's disabled
         });
         
       } catch (error) {
@@ -303,7 +300,9 @@ const PatientProfile = () => {
   // Handler for adding examination
   const handleAddExamination = () => {
     if (!isDoctor) return;
-    setIsAddingExamination(true);
+    // Temporarily disable opening dialog if examinations table doesn't exist
+    toast({ title: "Examinations Feature", description: "This feature is temporarily disabled."});
+    // setIsAddingExamination(true); 
   };
 
   // Loading state

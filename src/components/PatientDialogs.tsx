@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -47,6 +46,7 @@ const PatientDialogs = ({
     name: '',
     dosage: '',
     since: new Date().toISOString().split('T')[0],
+    current: true, // Added current field, default to true, as DB now has it
   });
   
   const [historyForm, setHistoryForm] = useState({
@@ -59,14 +59,15 @@ const PatientDialogs = ({
     date: new Date().toISOString().split('T')[0],
     type: '',
     place: '',
+    time: '09:00', // Added time field back
   });
 
   // Save condition to Supabase
   const saveCondition = async () => {
-    if (!selectedBodyPart || !patient.id) {
+    if (!selectedBodyPart || !patient.identifier) { // Use patient.identifier
       toast({
         title: "Error",
-        description: "Missing required information",
+        description: "Missing required information (patient identifier or body part)",
         variant: "destructive"
       });
       return;
@@ -82,21 +83,17 @@ const PatientDialogs = ({
     }
     
     try {
-      console.log("Saving condition to database, patient ID:", patient.id);
-      console.log("Condition data:", { 
-        patient_id: patient.id, 
-        body_part: selectedBodyPart, 
-        description: conditionForm.description 
-      });
+      console.log("Saving condition to database, patient identifier:", patient.identifier); // Use patient.identifier
+      const payload = {
+        patient_id: patient.identifier, // Use patient.identifier
+        body_part: selectedBodyPart,
+        description: conditionForm.description,
+      };
+      console.log("Condition data:", payload);
       
-      // Insert condition into Supabase
       const { data, error } = await supabase
         .from('conditions')
-        .insert({
-          patient_id: patient.id,
-          body_part: selectedBodyPart,
-          description: conditionForm.description,
-        })
+        .insert(payload)
         .select();
       
       console.log("Insert result:", { data, error });
@@ -105,15 +102,15 @@ const PatientDialogs = ({
         throw error;
       }
       
-      // Update local state
       const newCondition = {
+        id: data?.[0]?.id,
         bodyPart: selectedBodyPart,
         description: conditionForm.description,
       };
       
       setPatient((prev: any) => ({
         ...prev,
-        bodyConditions: [...prev.bodyConditions, newCondition]
+        bodyConditions: [...(prev.bodyConditions || []), newCondition]
       }));
       
       toast({
@@ -125,7 +122,7 @@ const PatientDialogs = ({
       console.error('Error saving condition:', error);
       toast({
         title: "Error",
-        description: "Failed to save condition",
+        description: (error as Error).message || "Failed to save condition",
         variant: "destructive"
       });
     } finally {
@@ -137,42 +134,38 @@ const PatientDialogs = ({
   
   // Save medication to Supabase
   const saveMedication = async () => {
-    if (!patient.id) {
+    if (!patient.identifier) { // Use patient.identifier
       toast({
         title: "Error",
-        description: "Patient ID is missing",
+        description: "Patient identifier is missing",
         variant: "destructive"
       });
       return;
     }
     
-    if (!medicationForm.name.trim() || !medicationForm.dosage.trim()) {
+    if (!medicationForm.name.trim() || !medicationForm.dosage.trim() || !medicationForm.since) {
       toast({
         title: "Validation Error",
-        description: "All fields are required",
+        description: "Medication Name, Dosage, and Since date are required",
         variant: "destructive"
       });
       return;
     }
     
     try {
-      console.log("Saving medication to database, patient ID:", patient.id);
-      console.log("Medication data:", { 
-        patient_id: patient.id, 
+      console.log("Saving medication to database, patient identifier:", patient.identifier); // Use patient.identifier
+      const payload = {
+        patient_id: patient.identifier, // Use patient.identifier
         name: medicationForm.name,
         dosage: medicationForm.dosage,
-        since: medicationForm.since
-      });
+        since: medicationForm.since,
+        current: medicationForm.current, // Ensure 'current' is sent
+      };
+      console.log("Medication data:", payload);
       
-      // Insert medication into Supabase
       const { data, error } = await supabase
         .from('medications')
-        .insert({
-          patient_id: patient.id,
-          name: medicationForm.name,
-          dosage: medicationForm.dosage,
-          since: medicationForm.since,
-        })
+        .insert(payload)
         .select();
       
       console.log("Insert result:", { data, error });
@@ -181,16 +174,17 @@ const PatientDialogs = ({
         throw error;
       }
       
-      // Update local state
       const newMedication = {
+        id: data?.[0]?.id, 
         name: medicationForm.name,
         since: medicationForm.since,
         medications: [medicationForm.dosage],
+        current: medicationForm.current, // Add current to local state update
       };
       
       setPatient((prev: any) => ({
         ...prev,
-        currentConditions: [...prev.currentConditions, newMedication]
+        medications: [...(prev.medications || []), newMedication], 
       }));
       
       toast({
@@ -202,7 +196,7 @@ const PatientDialogs = ({
       console.error('Error saving medication:', error);
       toast({
         title: "Error",
-        description: "Failed to save medication",
+        description: (error as Error).message || "Failed to save medication",
         variant: "destructive"
       });
     } finally {
@@ -211,48 +205,44 @@ const PatientDialogs = ({
         name: '',
         dosage: '',
         since: new Date().toISOString().split('T')[0],
+        current: true, // Reset current status
       });
     }
   };
   
   // Save medical history record to Supabase
   const saveHistoryRecord = async () => {
-    if (!patient.id) {
+    if (!patient.identifier) { // Use patient.identifier
       toast({
         title: "Error",
-        description: "Patient ID is missing",
+        description: "Patient identifier is missing",
         variant: "destructive"
       });
       return;
     }
     
-    if (!historyForm.condition.trim()) {
+    if (!historyForm.condition.trim() || !historyForm.date) {
       toast({
         title: "Validation Error",
-        description: "Condition is required",
+        description: "Condition and Date are required for medical history",
         variant: "destructive"
       });
       return;
     }
     
     try {
-      console.log("Saving medical history to database, patient ID:", patient.id);
-      console.log("Medical history data:", { 
-        patient_id: patient.id, 
+      console.log("Saving medical history to database, patient identifier:", patient.identifier); // Use patient.identifier
+      const payload = {
+        patient_id: patient.identifier, // Use patient.identifier
         date: historyForm.date,
         condition: historyForm.condition,
-        notes: historyForm.notes
-      });
+        notes: historyForm.notes,
+      };
+      console.log("Medical history data:", payload);
       
-      // Insert history record into Supabase
       const { data, error } = await supabase
         .from('medical_history')
-        .insert({
-          patient_id: patient.id,
-          date: historyForm.date,
-          condition: historyForm.condition,
-          notes: historyForm.notes,
-        })
+        .insert(payload)
         .select();
       
       console.log("Insert result:", { data, error });
@@ -261,8 +251,8 @@ const PatientDialogs = ({
         throw error;
       }
       
-      // Update local state
       const newHistoryRecord = {
+        id: data?.[0]?.id,
         date: historyForm.date,
         condition: historyForm.condition,
         notes: historyForm.notes,
@@ -270,7 +260,7 @@ const PatientDialogs = ({
       
       setPatient((prev: any) => ({
         ...prev,
-        medicalHistory: [newHistoryRecord, ...prev.medicalHistory]
+        medicalHistory: [newHistoryRecord, ...(prev.medicalHistory || [])]
       }));
       
       toast({
@@ -282,7 +272,7 @@ const PatientDialogs = ({
       console.error('Error saving history record:', error);
       toast({
         title: "Error",
-        description: "Failed to save medical history record",
+        description: (error as Error).message || "Failed to save medical history record",
         variant: "destructive"
       });
     } finally {
@@ -297,42 +287,36 @@ const PatientDialogs = ({
   
   // Save appointment to Supabase
   const saveAppointment = async () => {
-    if (!patient.id) {
+    if (!patient.identifier) { 
       toast({
         title: "Error",
-        description: "Patient ID is missing",
+        description: "Patient identifier is missing",
         variant: "destructive"
       });
       return;
     }
     
-    if (!appointmentForm.type.trim() || !appointmentForm.place.trim()) {
+    if (!appointmentForm.type.trim() || !appointmentForm.place.trim() || !appointmentForm.date || !appointmentForm.time) { // Added time validation
       toast({
         title: "Validation Error",
-        description: "All fields are required",
+        description: "All fields (Date, Time, Type, Place) are required", // Added Time to message
         variant: "destructive"
       });
       return;
     }
     
     try {
-      console.log("Saving appointment to database, patient ID:", patient.id);
-      console.log("Appointment data:", { 
-        patient_id: patient.id, 
-        date: appointmentForm.date,
+      console.log("Saving appointment to database, patient identifier:", patient.identifier);      const payload = {
+        patient_id: patient.identifier,        date: appointmentForm.date,
+        time: appointmentForm.time, // Added time back
         type: appointmentForm.type,
-        place: appointmentForm.place
-      });
+        place: appointmentForm.place,
+      };
+      console.log("Appointment data:", payload);
       
-      // Insert appointment into Supabase
       const { data, error } = await supabase
-        .from('appointments')
-        .insert({
-          patient_id: patient.id,
-          date: appointmentForm.date,
-          type: appointmentForm.type,
-          place: appointmentForm.place,
-        })
+        .from('appointment') 
+        .insert(payload)
         .select();
       
       console.log("Insert result:", { data, error });
@@ -341,9 +325,10 @@ const PatientDialogs = ({
         throw error;
       }
       
-      // Update local state
       const newAppointment = {
+        id: data?.[0]?.id,
         date: appointmentForm.date,
+        time: appointmentForm.time, // Added time back
         type: appointmentForm.type,
         place: appointmentForm.place,
       };
@@ -355,14 +340,14 @@ const PatientDialogs = ({
       
       toast({
         title: "Appointment added",
-        description: `Added appointment for ${appointmentForm.date}`
+        description: `Added appointment for ${appointmentForm.date} at ${appointmentForm.time}` // Added time to message
       });
       
     } catch (error) {
       console.error('Error saving appointment:', error);
       toast({
         title: "Error",
-        description: "Failed to save appointment",
+        description: (error as Error).message || "Failed to save appointment",
         variant: "destructive"
       });
     } finally {
@@ -371,6 +356,7 @@ const PatientDialogs = ({
         date: new Date().toISOString().split('T')[0],
         type: '',
         place: '',
+        time: '09:00', // Reset time
       });
     }
   };
@@ -565,6 +551,20 @@ const PatientDialogs = ({
               />
               {!appointmentForm.date && (
                 <p className="text-xs text-red-500">Date is required</p>
+              )}
+            </div>
+
+            <div className="space-y-2"> {/* Added time input field back */}
+              <Label htmlFor="appointment-time">Time</Label>
+              <Input 
+                id="appointment-time"
+                type="time"
+                value={appointmentForm.time}
+                onChange={(e) => setAppointmentForm({...appointmentForm, time: e.target.value})}
+                className={!appointmentForm.time ? 'border-red-500 focus-visible:ring-red-500' : ''}
+              />
+              {!appointmentForm.time && (
+                <p className="text-xs text-red-500">Time is required</p>
               )}
             </div>
             

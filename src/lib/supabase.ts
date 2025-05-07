@@ -110,21 +110,18 @@ export const initializeDatabase = async () => {
       }))
     );
     
-    // Get RLS policy info
-    try {
-      const { data: rlsData, error: rlsError } = await supabase.rpc('get_policies');
-      if (!rlsError && rlsData) {
-        console.log('RLS policies:', rlsData);
-      } else {
-        console.error('Could not check RLS policies:', rlsError);
-      }
-    } catch (e) {
-      console.log('RLS policy check failed:', e);
-    }
+    // Check RLS policies (optional, can be removed if not used)
+    // const { data: policies, error: rpcError } = await supabase.rpc('get_policies');
+    // if (rpcError) {
+    //   console.warn('Could not check RLS policies:', rpcError);
+    //   supabaseErrors.rlsPolicies = rpcError.message;
+    // } else {
+    //   console.log('RLS Policies:', policies);
+    // }
     
     return true;
-  } catch (e) {
-    console.error('Database initialization error:', e);
+  } catch (error) {
+    console.error('Database initialization error:', error);
     return false;
   }
 };

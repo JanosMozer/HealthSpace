@@ -1,4 +1,3 @@
-
 // Define body parts that can be highlighted on the diagram
 export type BodyPart = 
   | 'head' 
@@ -26,8 +25,9 @@ export interface Condition {
 
 // Appointment
 export interface Appointment {
+  id?: string; // Optional: if you assign a client-side ID before DB ID is known
   date: string;
-  time?: string;
+  time?: string; // Added time back (optional if sometimes not present)
   type: string;
   place: string;
 }
@@ -41,12 +41,12 @@ export interface Examination {
 
 // Complete patient type
 export interface Patient {
-  id: string;
+  id: string; // This is the UUID from patients.id
   name: string;
   age: number;
   dob: string;
   gender: string;
-  identifier: string;
+  identifier: number; // This is the int8 identifier from patients.identifier
   currentConditions: {
     name: string;
     since: string;
