@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -45,7 +44,7 @@ const MedicalHistoryTab = ({ patient, isDoctor, onAddHistoryRecord, setPatient }
         .from('medical_history')
         .select('*')
         .eq('patient_id', patient.id)
-        .order('date', { ascending: false });
+        .order('date', { ascending: false }); // Changed to true for oldest first
         
       if (error) throw error;
       
@@ -104,36 +103,44 @@ const MedicalHistoryTab = ({ patient, isDoctor, onAddHistoryRecord, setPatient }
       const doctorWorkplace = doctor?.workplace || '';
       const doctorId = doctor?.id;
       
-      const { error } = await supabase
+      const newRecordPayload = {
+        patient_id: patient.id,
+        date: data.date,
+        condition: data.condition,
+        notes: data.notes,
+        doctor_id: doctorId,
+        doctor_name: doctorName,
+        doctor_workplace: doctorWorkplace,
+        record_type: data.recordType,
+      };
+
+      const { data: insertedData, error } = await supabase
         .from('medical_history')
-        .insert({
-          patient_id: patient.id,
-          date: data.date,
-          condition: data.condition,
-          notes: data.notes,
-          doctor_id: doctorId,
-          doctor_name: doctorName,
-          doctor_workplace: doctorWorkplace,
-          record_type: data.recordType,
-        });
+        .insert(newRecordPayload)
+        .select() // Optionally select the inserted record if you need its DB-generated ID
+        .single(); // Assuming you expect one record back
         
       if (error) throw error;
       
       if (setPatient) {
-        setPatient(prev => ({
-          ...prev,
-          medicalHistory: [
-            {
-              date: data.date,
-              condition: data.condition,
-              notes: data.notes,
-              doctorName: doctorName,
-              doctorWorkplace: doctorWorkplace,
-              recordType: data.recordType,
-            },
-            ...prev.medicalHistory
-          ]
-        }));
+        const newMedicalRecordEntry: MedicalHistoryRecord = {
+          date: data.date,
+          condition: data.condition,
+          notes: data.notes,
+          doctorName: doctorName,
+          doctorWorkplace: doctorWorkplace,
+          recordType: data.recordType as MedicalHistoryRecord['recordType'],
+        };
+
+        setPatient(prev => {
+          const updatedHistory = [...prev.medicalHistory, newMedicalRecordEntry];
+          // Sort by date ascending (oldest first)
+          updatedHistory.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+          return {
+            ...prev,
+            medicalHistory: updatedHistory
+          };
+        });
       }
       
       historyForm.reset();
@@ -154,7 +161,7 @@ const MedicalHistoryTab = ({ patient, isDoctor, onAddHistoryRecord, setPatient }
   };
 
   return (
-    <TabsContent value="history">
+    <TabsContent value="medicalHistory"> {/* Changed from "history" */}
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-xl font-bold">Medical History</h3>
       </div>

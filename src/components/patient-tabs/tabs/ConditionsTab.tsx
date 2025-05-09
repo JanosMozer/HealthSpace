@@ -192,7 +192,7 @@ const ConditionsTab = ({ patient, isDoctor, onAddCondition, setPatient }: Condit
                             onValueChange={field.onChange}
                           >
                             <SelectTrigger>
-                              <SelectValue placeholder="Select body part" />
+                              <SelectValue placeholder="-- Select --" />
                             </SelectTrigger>
                             <SelectContent>
                               {bodyPartOptions.map(option => (
