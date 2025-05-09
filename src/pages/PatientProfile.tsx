@@ -32,7 +32,7 @@ const PatientProfile = () => {
     age: 0,
     dob: '',
     gender: '',
-    identifier: patientId || '',
+    identifier: parseInt(patientId || '0'), // Convert string to number
     currentConditions: [],
     medicalHistory: [],
     bodyConditions: [],

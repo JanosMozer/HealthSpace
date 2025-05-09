@@ -8,6 +8,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { useForm } from 'react-hook-form';
 import { Patient, Examination } from '@/types/patient';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/hooks/use-auth';
+import { useToast } from '@/hooks/use-toast';
 
 interface ExaminationsTabProps {
   patient: Patient;
@@ -18,6 +20,8 @@ interface ExaminationsTabProps {
 
 const ExaminationsTab = ({ patient, isDoctor, onAddExamination, setPatient }: ExaminationsTabProps) => {
   const [expandedExamination, setExpandedExamination] = useState<string | null>(null);
+  const { doctor } = useAuth();
+  const { toast } = useToast();
   
   // Toggle examination item expansion
   const toggleExaminationItem = (id: string) => {
@@ -30,6 +34,8 @@ const ExaminationsTab = ({ patient, isDoctor, onAddExamination, setPatient }: Ex
       date: new Date().toISOString().split('T')[0],
       name: '',
       notes: '',
+      // Image handling would be implemented here
+      // imageFile: null
     }
   });
 
@@ -40,6 +46,16 @@ const ExaminationsTab = ({ patient, isDoctor, onAddExamination, setPatient }: Ex
     }
     
     try {
+      // Add doctor information
+      const doctorName = doctor?.name || 'Unknown Doctor';
+      const doctorId = doctor?.id;
+      
+      // In a real implementation, here we would:
+      // 1. Upload the image to a storage service (e.g., Supabase Storage)
+      // 2. Get the URL of the uploaded image
+      // 3. Store that URL in the examinations table
+      
+      // For now, we're just storing the examination metadata
       const { error } = await supabase
         .from('examinations')
         .insert({
@@ -47,9 +63,29 @@ const ExaminationsTab = ({ patient, isDoctor, onAddExamination, setPatient }: Ex
           date: data.date,
           name: data.name,
           notes: data.notes,
+          doctor_id: doctorId,
+          doctor_name: doctorName,
+          // image_url: would be set here after image upload
         });
         
       if (error) throw error;
+      
+      // Add to medical history as well
+      const { error: historyError } = await supabase
+        .from('medical_history')
+        .insert({
+          patient_id: patient.id,
+          date: data.date,
+          condition: `Examination: ${data.name}`,
+          notes: data.notes,
+          doctor_id: doctorId,
+          doctor_name: doctorName,
+          record_type: 'examination',
+        });
+        
+      if (historyError) {
+        console.error('Error adding to medical history:', historyError);
+      }
       
       if (setPatient) {
         setPatient(prev => ({
@@ -60,15 +96,37 @@ const ExaminationsTab = ({ patient, isDoctor, onAddExamination, setPatient }: Ex
               date: data.date,
               name: data.name,
               notes: data.notes,
+              doctorName: doctorName,
+              // imageUrl: would be set here after image upload
             }
+          ],
+          // Also add to medical history
+          medicalHistory: [
+            {
+              date: data.date,
+              condition: `Examination: ${data.name}`,
+              notes: data.notes,
+              doctorName: doctorName,
+              recordType: 'examination',
+            },
+            ...prev.medicalHistory
           ]
         }));
       }
       
       examinationForm.reset();
+      toast({
+        title: "Examination added",
+        description: "The examination record has been saved successfully.",
+      });
       
     } catch (error) {
       console.error('Error adding examination:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add examination.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -132,6 +190,31 @@ const ExaminationsTab = ({ patient, isDoctor, onAddExamination, setPatient }: Ex
                 </FormItem>
               )}
             />
+            
+            {/* This would be implemented when we add image storage functionality 
+            <FormField
+              name="imageFile"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Examination Image</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="file" 
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files ? e.target.files[0] : null;
+                        field.onChange(file);
+                      }}
+                    />
+                  </FormControl>
+                  <p className="text-xs text-muted-foreground">
+                    Upload X-Ray, MRI scans, or other examination images
+                  </p>
+                </FormItem>
+              )}
+            />
+            */}
+            
             <div className="flex justify-end">
               <Button type="submit">Save Examination</Button>
             </div>
@@ -148,21 +231,37 @@ const ExaminationsTab = ({ patient, isDoctor, onAddExamination, setPatient }: Ex
               onClick={() => toggleExaminationItem(`exam-${index}`)}
             >
               <div className="flex justify-between items-center mb-2">
-                <h4 className="font-medium">{exam.name}</h4>
+                <div>
+                  <h4 className="font-medium">{exam.name}</h4>
+                  {exam.doctorName && (
+                    <p className="text-xs text-muted-foreground">Doctor: {exam.doctorName}</p>
+                  )}
+                </div>
                 <span className="text-xs text-muted-foreground">{exam.date}</span>
               </div>
+              
               {expandedExamination === `exam-${index}` ? (
-                <p className="text-sm">{exam.notes}</p>
+                <>
+                  <p className="text-sm">{exam.notes}</p>
+                  {exam.imageUrl && (
+                    <div className="mt-2 border rounded overflow-hidden">
+                      <img 
+                        src={exam.imageUrl} 
+                        alt={`${exam.name} scan`} 
+                        className="w-full object-contain max-h-64"
+                      />
+                    </div>
+                  )}
+                </>
               ) : (
                 <p className="text-sm text-muted-foreground truncate">
                   {exam.notes}
                 </p>
               )}
-              {exam.notes && (
-                <p className="text-xs text-primary mt-2">
-                  {expandedExamination === `exam-${index}` ? "Click to collapse" : "Click to expand"}
-                </p>
-              )}
+              
+              <p className="text-xs text-primary mt-2">
+                {expandedExamination === `exam-${index}` ? "Click to collapse" : "Click to expand"}
+              </p>
             </div>
           ))}
         </div>

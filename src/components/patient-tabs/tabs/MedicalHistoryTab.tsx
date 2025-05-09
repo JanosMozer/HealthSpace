@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Form, FormField, FormItem, FormLabel, FormControl } from '@/components/ui/form';
@@ -22,6 +22,55 @@ const MedicalHistoryTab = ({ patient, isDoctor, onAddHistoryRecord, setPatient }
   const [expandedHistory, setExpandedHistory] = useState<string | null>(null);
   const { doctor } = useAuth();
   const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+
+  // Effect to fetch all medical history for the patient when tab is first viewed
+  useEffect(() => {
+    if (patient.id) {
+      fetchMedicalHistory();
+    }
+  }, [patient.id]);
+
+  // Fetch all medical history records
+  const fetchMedicalHistory = async () => {
+    if (!patient.id) return;
+    
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('medical_history')
+        .select('*')
+        .eq('patient_id', patient.id)
+        .order('date', { ascending: false });
+        
+      if (error) throw error;
+      
+      if (data && setPatient) {
+        // Transform the data to our MedicalHistoryRecord format
+        const medicalHistory = data.map(record => ({
+          date: record.date,
+          condition: record.condition,
+          notes: record.notes,
+          doctorName: record.doctor_name || 'Unknown',
+          recordType: record.record_type as MedicalHistoryRecord['recordType'],
+        }));
+        
+        setPatient(prev => ({
+          ...prev,
+          medicalHistory
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching medical history:', error);
+      toast({
+        title: "Error",
+        description: "Failed to retrieve complete medical history.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Toggle history item expansion
   const toggleHistoryItem = (id: string) => {
@@ -153,6 +202,7 @@ const MedicalHistoryTab = ({ patient, isDoctor, onAddHistoryRecord, setPatient }
                         <option value="medication">Medication</option>
                         <option value="condition">Medical Condition</option>
                         <option value="appointment">Appointment</option>
+                        <option value="examination">Examination</option>
                       </select>
                     </FormControl>
                   </FormItem>
@@ -182,7 +232,12 @@ const MedicalHistoryTab = ({ patient, isDoctor, onAddHistoryRecord, setPatient }
         </Form>
       )}
       
-      {patient && patient.medicalHistory && patient.medicalHistory.length > 0 ? (
+      {loading ? (
+        <div className="text-center py-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-2 text-sm text-muted-foreground">Loading medical records...</p>
+        </div>
+      ) : patient && patient.medicalHistory && patient.medicalHistory.length > 0 ? (
         <div className="space-y-4">
           {patient.medicalHistory.map((entry, index) => (
             <div 
@@ -235,6 +290,7 @@ const getRecordTypeColor = (recordType: string): string => {
     case 'medication': return 'blue';
     case 'condition': return 'amber';
     case 'appointment': return 'green';
+    case 'examination': return 'purple';
     default: return 'gray';
   }
 };
@@ -244,6 +300,7 @@ const formatRecordType = (recordType: string): string => {
     case 'medication': return 'Medication';
     case 'condition': return 'Condition';
     case 'appointment': return 'Appointment';
+    case 'examination': return 'Examination';
     case 'general': return 'General';
     default: return recordType.charAt(0).toUpperCase() + recordType.slice(1);
   }

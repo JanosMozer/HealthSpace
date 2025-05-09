@@ -22,6 +22,7 @@ export type BodyPart =
 export interface Condition {
   bodyPart: BodyPart;
   description: string;
+  doctorName?: string;
 }
 
 // Appointment
@@ -31,6 +32,8 @@ export interface Appointment {
   time?: string;
   type: string;
   place: string;
+  doctorName?: string;
+  status?: 'pending' | 'done';
 }
 
 // Examination record
@@ -38,6 +41,8 @@ export interface Examination {
   date: string;
   name: string;
   notes: string;
+  doctorName?: string;
+  imageUrl?: string; // URL to the image stored in a cloud storage service
 }
 
 // Enhanced medical history record with doctor information
@@ -46,7 +51,7 @@ export interface MedicalHistoryRecord {
   condition: string;
   notes: string;
   doctorName?: string;
-  recordType?: 'medication' | 'condition' | 'appointment' | 'general';
+  recordType?: 'medication' | 'condition' | 'appointment' | 'general' | 'examination';
 }
 
 // Complete patient type
