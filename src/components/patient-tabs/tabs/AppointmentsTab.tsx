@@ -11,6 +11,7 @@ import { Patient, Appointment } from '@/types/patient';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface AppointmentsTabProps {
   patient: Patient;
@@ -21,6 +22,7 @@ interface AppointmentsTabProps {
 
 const AppointmentsTab = ({ patient, isDoctor, onAddAppointment, setPatient }: AppointmentsTabProps) => {
   const [showPastAppointments, setShowPastAppointments] = useState(false);
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const today = startOfDay(new Date());
   const { doctor } = useAuth();
   const { toast } = useToast();
@@ -81,7 +83,7 @@ const AppointmentsTab = ({ patient, isDoctor, onAddAppointment, setPatient }: Ap
       const doctorId = doctor?.id;
       
       const payload = {
-        patient_id: patient.identifier,
+        patient_id: patient.id,
         date: data.date,
         time: data.time,
         type: data.type,
@@ -152,6 +154,7 @@ const AppointmentsTab = ({ patient, isDoctor, onAddAppointment, setPatient }: Ap
       }
       
       appointmentForm.reset();
+      setIsFormOpen(false);
       toast({
         title: "Appointment added",
         description: "The appointment has been saved successfully.",
@@ -175,81 +178,89 @@ const AppointmentsTab = ({ patient, isDoctor, onAddAppointment, setPatient }: Ap
     <TabsContent value="appointments">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-xl font-bold">Doctor Appointments</h3>
-        {isDoctor && (
-          <Button
-            size="sm"
-            onClick={onAddAppointment}
-          >
-            Add Appointment
-          </Button>
-        )}
       </div>
       
       {isDoctor && (
-        <Form {...appointmentForm}>
-          <form onSubmit={appointmentForm.handleSubmit(handleAppointmentSubmit)} className="space-y-4 mb-6 p-4 border border-border rounded-md">
-            <h4 className="font-medium">Add New Appointment</h4>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <FormField
-                control={appointmentForm.control}
-                name="date"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Date</FormLabel>
-                    <FormControl>
-                      <div className="flex items-center">
-                        <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
-                        <Input type="date" {...field} />
-                      </div>
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={appointmentForm.control}
-                name="time"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Time</FormLabel>
-                    <FormControl>
-                      <div className="flex items-center">
-                        <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
-                        <Input type="time" {...field} />
-                      </div>
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={appointmentForm.control}
-                name="type"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Type</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Appointment type..." {...field} />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={appointmentForm.control}
-                name="place"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Place</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Appointment location..." {...field} />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-            </div>
-            <div className="flex justify-end">
-              <Button type="submit">Save Appointment</Button>
-            </div>
-          </form>
-        </Form>
+        <Collapsible 
+          open={isFormOpen} 
+          onOpenChange={setIsFormOpen}
+          className="mb-6 print:hidden"
+        >
+          <CollapsibleTrigger asChild>
+            <Button 
+              variant="outline" 
+              className="w-full flex items-center justify-between mb-2"
+            >
+              <span>Add New Appointment</span>
+              {isFormOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <Form {...appointmentForm}>
+              <form onSubmit={appointmentForm.handleSubmit(handleAppointmentSubmit)} className="space-y-4 p-4 border border-border rounded-md">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <FormField
+                    control={appointmentForm.control}
+                    name="date"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Date</FormLabel>
+                        <FormControl>
+                          <div className="flex items-center">
+                            <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
+                            <Input type="date" {...field} />
+                          </div>
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={appointmentForm.control}
+                    name="time"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Time</FormLabel>
+                        <FormControl>
+                          <div className="flex items-center">
+                            <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
+                            <Input type="time" {...field} />
+                          </div>
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={appointmentForm.control}
+                    name="type"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Type</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Appointment type..." {...field} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={appointmentForm.control}
+                    name="place"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Place</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Appointment location..." {...field} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <div className="flex justify-end">
+                  <Button type="submit">Save Appointment</Button>
+                </div>
+              </form>
+            </Form>
+          </CollapsibleContent>
+        </Collapsible>
       )}
       
       <div className="space-y-6">

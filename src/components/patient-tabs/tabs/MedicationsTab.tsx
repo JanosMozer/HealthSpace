@@ -10,6 +10,7 @@ import { Patient } from '@/types/patient';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface MedicationsTabProps {
   patient: Patient;
@@ -20,6 +21,7 @@ interface MedicationsTabProps {
 
 const MedicationsTab = ({ patient, isDoctor, onAddMedication, setPatient }: MedicationsTabProps) => {
   const [showPastMedications, setShowPastMedications] = useState(false);
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const { doctor } = useAuth();
   const { toast } = useToast();
   
@@ -102,6 +104,7 @@ const MedicationsTab = ({ patient, isDoctor, onAddMedication, setPatient }: Medi
       }
       
       medicationForm.reset();
+      setIsFormOpen(false);
       toast({
         title: "Medication added",
         description: "The medication has been saved successfully.",
@@ -125,80 +128,88 @@ const MedicationsTab = ({ patient, isDoctor, onAddMedication, setPatient }: Medi
     <TabsContent value="medications">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-xl font-bold">Medications</h3>
-        {isDoctor && (
-          <Button 
-            size="sm"
-            onClick={onAddMedication}
-          >
-            Add Medication
-          </Button>
-        )}
       </div>
       
       {isDoctor && (
-        <Form {...medicationForm}>
-          <form onSubmit={medicationForm.handleSubmit(handleMedicationSubmit)} className="space-y-4 mb-6 p-4 border border-border rounded-md">
-            <h4 className="font-medium">Add New Medication</h4>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <FormField
-                control={medicationForm.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Medication Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Medication name..." {...field} />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={medicationForm.control}
-                name="dosage"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Dosage</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g. 10mg twice daily" {...field} />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={medicationForm.control}
-                name="since"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Since</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={medicationForm.control}
-                name="current"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-end space-x-2">
-                    <FormControl>
-                      <input 
-                        type="checkbox" 
-                        checked={field.value} 
-                        onChange={e => field.onChange(e.target.checked)} 
-                        className="h-4 w-4"
-                      />
-                    </FormControl>
-                    <FormLabel>Currently Active</FormLabel>
-                  </FormItem>
-                )}
-              />
-            </div>
-            <div className="flex justify-end">
-              <Button type="submit">Save Medication</Button>
-            </div>
-          </form>
-        </Form>
+        <Collapsible 
+          open={isFormOpen} 
+          onOpenChange={setIsFormOpen}
+          className="mb-6 print:hidden"
+        >
+          <CollapsibleTrigger asChild>
+            <Button 
+              variant="outline" 
+              className="w-full flex items-center justify-between mb-2"
+            >
+              <span>Add New Medication</span>
+              {isFormOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <Form {...medicationForm}>
+              <form onSubmit={medicationForm.handleSubmit(handleMedicationSubmit)} className="space-y-4 p-4 border border-border rounded-md">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <FormField
+                    control={medicationForm.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Medication Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Medication name..." {...field} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={medicationForm.control}
+                    name="dosage"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Dosage</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g. 10mg twice daily" {...field} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={medicationForm.control}
+                    name="since"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Since</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={medicationForm.control}
+                    name="current"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-end space-x-2">
+                        <FormControl>
+                          <input 
+                            type="checkbox" 
+                            checked={field.value} 
+                            onChange={e => field.onChange(e.target.checked)} 
+                            className="h-4 w-4"
+                          />
+                        </FormControl>
+                        <FormLabel>Currently Active</FormLabel>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <div className="flex justify-end">
+                  <Button type="submit">Save Medication</Button>
+                </div>
+              </form>
+            </Form>
+          </CollapsibleContent>
+        </Collapsible>
       )}
       
       <div className="space-y-6">

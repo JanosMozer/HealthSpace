@@ -288,32 +288,6 @@ const PatientProfile = () => {
     setSelectedBodyPart(bodyPart);
     setIsEditingCondition(true);
   };
-  
-  // Handler for adding medication
-  const handleAddMedication = () => {
-    if (!isDoctor) return;
-    setIsAddingMedication(true);
-  };
-  
-  // Handler for adding medical history record
-  const handleAddHistoryRecord = () => {
-    if (!isDoctor) return;
-    setIsAddingHistoryRecord(true);
-  };
-  
-  // Handler for adding appointment
-  const handleAddAppointment = () => {
-    if (!isDoctor) return;
-    setIsAddingAppointment(true);
-  };
-  
-  // Handler for adding examination
-  const handleAddExamination = () => {
-    if (!isDoctor) return;
-    // Temporarily disable opening dialog if examinations table doesn't exist
-    toast({ title: "Examinations Feature", description: "This feature is temporarily disabled."});
-    // setIsAddingExamination(true); 
-  };
 
   // Loading state
   if (loading) {
@@ -339,7 +313,6 @@ const PatientProfile = () => {
         <PatientInfo 
           patient={patient} 
           isReadOnly={!isDoctor} 
-          onAddHistory={handleAddHistoryRecord}
         />
         
         {/* Tabbed sections */}
@@ -347,11 +320,6 @@ const PatientProfile = () => {
           <PatientTabs 
             patient={patient} 
             isDoctor={isDoctor} 
-            onAddCondition={handleAddCondition} 
-            onAddMedication={handleAddMedication}
-            onAddAppointment={handleAddAppointment}
-            onAddHistoryRecord={handleAddHistoryRecord}
-            onAddExamination={handleAddExamination}
             setPatient={setPatient}
           />
         </div>

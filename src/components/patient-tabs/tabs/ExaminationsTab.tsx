@@ -10,6 +10,8 @@ import { Patient, Examination } from '@/types/patient';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 
 interface ExaminationsTabProps {
   patient: Patient;
@@ -20,6 +22,7 @@ interface ExaminationsTabProps {
 
 const ExaminationsTab = ({ patient, isDoctor, onAddExamination, setPatient }: ExaminationsTabProps) => {
   const [expandedExamination, setExpandedExamination] = useState<string | null>(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const { doctor } = useAuth();
   const { toast } = useToast();
   
@@ -115,6 +118,7 @@ const ExaminationsTab = ({ patient, isDoctor, onAddExamination, setPatient }: Ex
       }
       
       examinationForm.reset();
+      setIsFormOpen(false);
       toast({
         title: "Examination added",
         description: "The examination record has been saved successfully.",
@@ -134,92 +138,100 @@ const ExaminationsTab = ({ patient, isDoctor, onAddExamination, setPatient }: Ex
     <TabsContent value="examinations">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-xl font-bold">Medical Examinations</h3>
-        {isDoctor && (
-          <Button 
-            size="sm"
-            onClick={onAddExamination}
-          >
-            Add Examination
-          </Button>
-        )}
       </div>
       
       {isDoctor && (
-        <Form {...examinationForm}>
-          <form onSubmit={examinationForm.handleSubmit(handleExaminationSubmit)} className="space-y-4 mb-6 p-4 border border-border rounded-md">
-            <h4 className="font-medium">Add New Examination</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={examinationForm.control}
-                name="date"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Date</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={examinationForm.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Examination Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Examination name..." {...field} />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-            </div>
-            <FormField
-              control={examinationForm.control}
-              name="notes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Notes</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      placeholder="Examination notes..." 
-                      {...field} 
-                      rows={3}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-            
-            {/* This would be implemented when we add image storage functionality 
-            <FormField
-              name="imageFile"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Examination Image</FormLabel>
-                  <FormControl>
-                    <Input 
-                      type="file" 
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files ? e.target.files[0] : null;
-                        field.onChange(file);
-                      }}
-                    />
-                  </FormControl>
-                  <p className="text-xs text-muted-foreground">
-                    Upload X-Ray, MRI scans, or other examination images
-                  </p>
-                </FormItem>
-              )}
-            />
-            */}
-            
-            <div className="flex justify-end">
-              <Button type="submit">Save Examination</Button>
-            </div>
-          </form>
-        </Form>
+        <Collapsible 
+          open={isFormOpen} 
+          onOpenChange={setIsFormOpen}
+          className="mb-6 print:hidden"
+        >
+          <CollapsibleTrigger asChild>
+            <Button 
+              variant="outline" 
+              className="w-full flex items-center justify-between mb-2"
+            >
+              <span>Add New Examination</span>
+              {isFormOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <Form {...examinationForm}>
+              <form onSubmit={examinationForm.handleSubmit(handleExaminationSubmit)} className="space-y-4 p-4 border border-border rounded-md">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={examinationForm.control}
+                    name="date"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Date</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={examinationForm.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Examination Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Examination name..." {...field} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <FormField
+                  control={examinationForm.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Notes</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Examination notes..." 
+                          {...field} 
+                          rows={3}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                
+                {/* This would be implemented when we add image storage functionality 
+                <FormField
+                  name="imageFile"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Examination Image</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="file" 
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files ? e.target.files[0] : null;
+                            field.onChange(file);
+                          }}
+                        />
+                      </FormControl>
+                      <p className="text-xs text-muted-foreground">
+                        Upload X-Ray, MRI scans, or other examination images
+                      </p>
+                    </FormItem>
+                  )}
+                />
+                */}
+                
+                <div className="flex justify-end">
+                  <Button type="submit">Save Examination</Button>
+                </div>
+              </form>
+            </Form>
+          </CollapsibleContent>
+        </Collapsible>
       )}
       
       {patient && patient.examinations && patient.examinations.length > 0 ? (
@@ -227,8 +239,7 @@ const ExaminationsTab = ({ patient, isDoctor, onAddExamination, setPatient }: Ex
           {patient.examinations.map((exam, index) => (
             <div 
               key={index} 
-              className="border border-border rounded-md p-3 shadow-sm cursor-pointer"
-              onClick={() => toggleExaminationItem(`exam-${index}`)}
+              className="border border-border rounded-md p-3 shadow-sm"
             >
               <div className="flex justify-between items-center mb-2">
                 <div>
@@ -240,28 +251,44 @@ const ExaminationsTab = ({ patient, isDoctor, onAddExamination, setPatient }: Ex
                 <span className="text-xs text-muted-foreground">{exam.date}</span>
               </div>
               
-              {expandedExamination === `exam-${index}` ? (
-                <>
-                  <p className="text-sm">{exam.notes}</p>
-                  {exam.imageUrl && (
-                    <div className="mt-2 border rounded overflow-hidden">
-                      <img 
-                        src={exam.imageUrl} 
-                        alt={`${exam.name} scan`} 
-                        className="w-full object-contain max-h-64"
-                      />
+              {exam.notes && (
+                <div>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    className="p-0 h-auto text-xs text-primary mt-1 print:hidden"
+                    onClick={() => toggleExaminationItem(`exam-${index}`)}
+                  >
+                    {expandedExamination === `exam-${index}` ? "Hide notes" : "Show notes"}
+                  </Button>
+                  {expandedExamination === `exam-${index}` && (
+                    <div className="print:hidden">
+                      <p className="text-sm mt-2">{exam.notes}</p>
+                      {exam.imageUrl && (
+                        <div className="mt-2 border rounded overflow-hidden">
+                          <img 
+                            src={exam.imageUrl} 
+                            alt={`${exam.name} scan`} 
+                            className="w-full object-contain max-h-64"
+                          />
+                        </div>
+                      )}
                     </div>
                   )}
-                </>
-              ) : (
-                <p className="text-sm text-muted-foreground truncate">
-                  {exam.notes}
-                </p>
+                  <div className="hidden print:block mt-2">
+                    <p className="text-sm">{exam.notes}</p>
+                    {exam.imageUrl && (
+                      <div className="mt-2 border rounded overflow-hidden">
+                        <img 
+                          src={exam.imageUrl} 
+                          alt={`${exam.name} scan`} 
+                          className="w-full object-contain max-h-64"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
               )}
-              
-              <p className="text-xs text-primary mt-2">
-                {expandedExamination === `exam-${index}` ? "Click to collapse" : "Click to expand"}
-              </p>
             </div>
           ))}
         </div>

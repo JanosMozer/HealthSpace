@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Form, FormField, FormItem, FormLabel, FormControl } from '@/components/ui/form';
@@ -10,6 +10,8 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 
 interface ConditionsTabProps {
   patient: Patient;
@@ -21,6 +23,7 @@ interface ConditionsTabProps {
 const ConditionsTab = ({ patient, isDoctor, onAddCondition, setPatient }: ConditionsTabProps) => {
   const { doctor } = useAuth();
   const { toast } = useToast();
+  const [isFormOpen, setIsFormOpen] = useState(false);
   
   // Form for adding conditions with body part
   const conditionForm = useForm({
@@ -137,6 +140,7 @@ const ConditionsTab = ({ patient, isDoctor, onAddCondition, setPatient }: Condit
       }
       
       conditionForm.reset();
+      setIsFormOpen(false);
       toast({
         title: "Condition added",
         description: "The condition has been saved successfully.",
@@ -156,91 +160,98 @@ const ConditionsTab = ({ patient, isDoctor, onAddCondition, setPatient }: Condit
     <TabsContent value="conditions">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-xl font-bold">Medical Conditions</h3>
-        {isDoctor && (
-          <Button 
-            variant="outline"
-            onClick={() => onAddCondition && onAddCondition('head')}
-            className="flex items-center gap-2"
-          >
-            <span className="text-xs">+</span> Add Condition
-          </Button>
-        )}
       </div>
       
       {isDoctor && (
-        <Form {...conditionForm}>
-          <form onSubmit={conditionForm.handleSubmit(handleConditionSubmit)} className="space-y-4 mb-6 p-4 border border-border rounded-md">
-            <h4 className="font-medium">Add New Condition</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={conditionForm.control}
-                name="bodyPart"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Body Part</FormLabel>
-                    <FormControl>
-                      <Select
-                        onValueChange={field.onChange}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select body part" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {bodyPartOptions.map(option => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={conditionForm.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Condition Description</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Describe the condition..." {...field} />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={conditionForm.control}
-                name="diagnosisPlace"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Diagnosis Place</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Where was it diagnosed..." {...field} />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={conditionForm.control}
-                name="diagnosisTime"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Diagnosis Time</FormLabel>
-                    <FormControl>
-                      <Input type="time" {...field} />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-            </div>
-            <div className="flex justify-end">
-              <Button type="submit">Save Condition</Button>
-            </div>
-          </form>
-        </Form>
+        <Collapsible 
+          open={isFormOpen} 
+          onOpenChange={setIsFormOpen}
+          className="mb-6 print:hidden"
+        >
+          <CollapsibleTrigger asChild>
+            <Button 
+              variant="outline" 
+              className="w-full flex items-center justify-between mb-2"
+            >
+              <span>Add New Condition</span>
+              {isFormOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <Form {...conditionForm}>
+              <form onSubmit={conditionForm.handleSubmit(handleConditionSubmit)} className="space-y-4 p-4 border border-border rounded-md">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={conditionForm.control}
+                    name="bodyPart"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Body Part</FormLabel>
+                        <FormControl>
+                          <Select
+                            onValueChange={field.onChange}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select body part" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {bodyPartOptions.map(option => (
+                                <SelectItem key={option.value} value={option.value}>
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={conditionForm.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Condition Description</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Describe the condition..." {...field} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={conditionForm.control}
+                    name="diagnosisPlace"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Diagnosis Place</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Where was it diagnosed..." {...field} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={conditionForm.control}
+                    name="diagnosisTime"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Diagnosis Time</FormLabel>
+                        <FormControl>
+                          <Input type="time" {...field} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <div className="flex justify-end">
+                  <Button type="submit">Save Condition</Button>
+                </div>
+              </form>
+            </Form>
+          </CollapsibleContent>
+        </Collapsible>
       )}
       
       {patient && patient.bodyConditions && patient.bodyConditions.length > 0 ? (

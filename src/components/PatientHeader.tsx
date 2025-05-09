@@ -1,6 +1,6 @@
 
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, LogOut } from 'lucide-react';
+import { ArrowLeft, LogOut, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
 
@@ -23,9 +23,11 @@ const PatientHeader = ({ connectionStatus, patientName = 'Patient Profile' }: Pa
 
   const handleLogout = () => {
     logout();
-    // For doctors, we'll redirect to the login page but with a message
-    // that they can log back in. For patients, just go to the main login page.
     navigate('/');
+  };
+
+  const handlePatientSearch = () => {
+    navigate('/doctor-dashboard');
   };
 
   return (
@@ -41,22 +43,35 @@ const PatientHeader = ({ connectionStatus, patientName = 'Patient Profile' }: Pa
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <h1 className="text-lg font-bold text-white">{patientName}</h1>
             {isDoctor && doctor && (
-              <span className="text-sm text-white/80 ml-4">
-                Dr. {doctor.name}
-              </span>
+              <h1 className="text-lg font-bold text-white">{doctor.name}</h1>
+            )}
+            {!isDoctor && (
+              <h1 className="text-lg font-bold text-white">{patientName}</h1>
             )}
           </div>
           
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={handleLogout}
-            className="text-white hover:bg-primary/80"
-          >
-            <LogOut className="h-5 w-5" />
-          </Button>
+          <div className="flex items-center space-x-2">
+            {isDoctor && (
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={handlePatientSearch}
+                className="text-white hover:bg-primary/80"
+                title="Search Patients"
+              >
+                <Search className="h-5 w-5" />
+              </Button>
+            )}
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={handleLogout}
+              className="text-white hover:bg-primary/80"
+            >
+              <LogOut className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
       </header>
 

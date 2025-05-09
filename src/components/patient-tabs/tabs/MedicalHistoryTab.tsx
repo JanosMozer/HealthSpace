@@ -11,6 +11,8 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ChevronDown, ChevronUp, Plus } from 'lucide-react';
 
 interface MedicalHistoryTabProps {
   patient: Patient;
@@ -24,6 +26,7 @@ const MedicalHistoryTab = ({ patient, isDoctor, onAddHistoryRecord, setPatient }
   const { doctor } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [isFormOpen, setIsFormOpen] = useState(false);
 
   // Effect to fetch all medical history for the patient when tab is first viewed
   useEffect(() => {
@@ -134,6 +137,7 @@ const MedicalHistoryTab = ({ patient, isDoctor, onAddHistoryRecord, setPatient }
       }
       
       historyForm.reset();
+      setIsFormOpen(false);
       toast({
         title: "Medical record added",
         description: "The medical record has been saved successfully.",
@@ -153,92 +157,99 @@ const MedicalHistoryTab = ({ patient, isDoctor, onAddHistoryRecord, setPatient }
     <TabsContent value="history">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-xl font-bold">Medical History</h3>
-        {isDoctor && (
-          <Button 
-            variant="outline"
-            onClick={onAddHistoryRecord}
-            className="flex items-center gap-2"
-          >
-            <span className="text-xs">+</span> Add Medical Record
-          </Button>
-        )}
       </div>
       
       {isDoctor && (
-        <Form {...historyForm}>
-          <form onSubmit={historyForm.handleSubmit(handleHistorySubmit)} className="space-y-4 mb-6 p-4 border border-border rounded-md">
-            <h4 className="font-medium">Add New Medical Record</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={historyForm.control}
-                name="date"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Date</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={historyForm.control}
-                name="condition"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Condition</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Condition name..." {...field} />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={historyForm.control}
-                name="recordType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Record Type</FormLabel>
-                    <Select
-                      defaultValue={field.value}
-                      onValueChange={field.onChange}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select record type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="general">General</SelectItem>
-                        <SelectItem value="medication">Medication</SelectItem>
-                        <SelectItem value="condition">Medical Condition</SelectItem>
-                        <SelectItem value="appointment">Appointment</SelectItem>
-                        <SelectItem value="examination">Examination</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </FormItem>
-                )}
-              />
-            </div>
-            <FormField
-              control={historyForm.control}
-              name="notes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Notes</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      placeholder="Additional notes..." 
-                      {...field} 
-                      rows={3}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-            <div className="flex justify-end">
-              <Button type="submit">Save Medical Record</Button>
-            </div>
-          </form>
-        </Form>
+        <Collapsible 
+          open={isFormOpen} 
+          onOpenChange={setIsFormOpen}
+          className="mb-6 print:hidden"
+        >
+          <CollapsibleTrigger asChild>
+            <Button 
+              variant="outline" 
+              className="w-full flex items-center justify-between mb-2"
+            >
+              <span>Add New Medical Record</span>
+              {isFormOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <Form {...historyForm}>
+              <form onSubmit={historyForm.handleSubmit(handleHistorySubmit)} className="space-y-4 p-4 border border-border rounded-md">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={historyForm.control}
+                    name="date"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Date</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={historyForm.control}
+                    name="condition"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Condition</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Condition name..." {...field} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={historyForm.control}
+                    name="recordType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Record Type</FormLabel>
+                        <Select
+                          defaultValue={field.value}
+                          onValueChange={field.onChange}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select record type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="general">General</SelectItem>
+                            <SelectItem value="medication">Medication</SelectItem>
+                            <SelectItem value="condition">Medical Condition</SelectItem>
+                            <SelectItem value="appointment">Appointment</SelectItem>
+                            <SelectItem value="examination">Examination</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <FormField
+                  control={historyForm.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Notes</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Additional notes..." 
+                          {...field} 
+                          rows={3}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <div className="flex justify-end">
+                  <Button type="submit">Save Medical Record</Button>
+                </div>
+              </form>
+            </Form>
+          </CollapsibleContent>
+        </Collapsible>
       )}
       
       {loading ? (
@@ -251,8 +262,7 @@ const MedicalHistoryTab = ({ patient, isDoctor, onAddHistoryRecord, setPatient }
           {patient.medicalHistory.map((entry, index) => (
             <div 
               key={index} 
-              className={`border rounded-md p-3 shadow-sm cursor-pointer ${entry.recordType ? `bg-${getRecordTypeColor(entry.recordType)}-50` : ''}`}
-              onClick={() => toggleHistoryItem(`history-${index}`)}
+              className={`border rounded-md p-3 shadow-sm ${entry.recordType ? `bg-${getRecordTypeColor(entry.recordType)}-50` : ''}`}
             >
               <div className="flex justify-between items-center mb-2">
                 <div>
@@ -273,17 +283,21 @@ const MedicalHistoryTab = ({ patient, isDoctor, onAddHistoryRecord, setPatient }
                   )}
                 </div>
               </div>
-              {expandedHistory === `history-${index}` ? (
-                <p className="text-sm mt-2">{entry.notes}</p>
-              ) : (
-                <p className="text-sm text-muted-foreground truncate mt-1">
-                  {entry.notes}
-                </p>
-              )}
               {entry.notes && (
-                <p className="text-xs text-primary mt-2">
-                  {expandedHistory === `history-${index}` ? "Click to collapse" : "Click to expand"}
-                </p>
+                <div>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    className="p-0 h-auto text-xs text-primary mt-1 print:hidden"
+                    onClick={() => toggleHistoryItem(`history-${index}`)}
+                  >
+                    {expandedHistory === `history-${index}` ? "Hide notes" : "Show notes"}
+                  </Button>
+                  {expandedHistory === `history-${index}` && (
+                    <p className="text-sm mt-2 print:hidden">{entry.notes}</p>
+                  )}
+                  <p className="text-sm mt-2 hidden print:block">{entry.notes}</p>
+                </div>
               )}
             </div>
           ))}
