@@ -8,6 +8,8 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { Patient } from '@/types/patient';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/hooks/use-auth';
+import { useToast } from '@/hooks/use-toast';
 
 interface MedicationsTabProps {
   patient: Patient;
@@ -18,6 +20,8 @@ interface MedicationsTabProps {
 
 const MedicationsTab = ({ patient, isDoctor, onAddMedication, setPatient }: MedicationsTabProps) => {
   const [showPastMedications, setShowPastMedications] = useState(false);
+  const { doctor } = useAuth();
+  const { toast } = useToast();
   
   // Form for adding medication
   const medicationForm = useForm({
@@ -36,7 +40,12 @@ const MedicationsTab = ({ patient, isDoctor, onAddMedication, setPatient }: Medi
     }
     
     try {
-      const { error } = await supabase
+      // Add doctor information
+      const doctorName = doctor?.name || 'Unknown Doctor';
+      const doctorId = doctor?.id;
+      
+      // Insert medication
+      const { error: medicationError } = await supabase
         .from('medications')
         .insert({
           patient_id: patient.id,
@@ -44,9 +53,27 @@ const MedicationsTab = ({ patient, isDoctor, onAddMedication, setPatient }: Medi
           dosage: data.dosage,
           since: data.since,
           current: data.current,
+          doctor_id: doctorId,
+          doctor_name: doctorName,
         });
         
-      if (error) throw error;
+      if (medicationError) throw medicationError;
+      
+      // Also add to medical history
+      const medicationStatus = data.current ? 'started' : 'discontinued';
+      const { error: historyError } = await supabase
+        .from('medical_history')
+        .insert({
+          patient_id: patient.id,
+          date: data.since,
+          condition: `Medication: ${data.name} ${medicationStatus}`,
+          notes: `Dosage: ${data.dosage}. ${data.current ? 'Currently active.' : 'No longer active.'}`,
+          doctor_id: doctorId,
+          doctor_name: doctorName,
+          record_type: 'medication',
+        });
+      
+      if (historyError) console.error('Error adding to medical history:', historyError);
       
       if (setPatient) {
         setPatient(prev => ({
@@ -59,14 +86,34 @@ const MedicationsTab = ({ patient, isDoctor, onAddMedication, setPatient }: Medi
               medications: [data.dosage],
               current: data.current,
             }
+          ],
+          // Add to medical history
+          medicalHistory: [
+            {
+              date: data.since,
+              condition: `Medication: ${data.name} ${medicationStatus}`,
+              notes: `Dosage: ${data.dosage}. ${data.current ? 'Currently active.' : 'No longer active.'}`,
+              doctorName: doctorName,
+              recordType: 'medication',
+            },
+            ...prev.medicalHistory
           ]
         }));
       }
       
       medicationForm.reset();
+      toast({
+        title: "Medication added",
+        description: "The medication has been saved successfully.",
+      });
       
     } catch (error) {
       console.error('Error adding medication:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add medication.",
+        variant: "destructive"
+      });
     }
   };
 

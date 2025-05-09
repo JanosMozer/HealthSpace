@@ -1,3 +1,4 @@
+
 // Define body parts that can be highlighted on the diagram
 export type BodyPart = 
   | 'head' 
@@ -27,7 +28,7 @@ export interface Condition {
 export interface Appointment {
   id?: string; // Optional: if you assign a client-side ID before DB ID is known
   date: string;
-  time?: string; // Added time back (optional if sometimes not present)
+  time?: string;
   type: string;
   place: string;
 }
@@ -37,6 +38,15 @@ export interface Examination {
   date: string;
   name: string;
   notes: string;
+}
+
+// Enhanced medical history record with doctor information
+export interface MedicalHistoryRecord {
+  date: string;
+  condition: string;
+  notes: string;
+  doctorName?: string;
+  recordType?: 'medication' | 'condition' | 'appointment' | 'general';
 }
 
 // Complete patient type
@@ -53,11 +63,7 @@ export interface Patient {
     medications: string[];
     current?: boolean;
   }[];
-  medicalHistory: {
-    date: string;
-    condition: string;
-    notes: string;
-  }[];
+  medicalHistory: MedicalHistoryRecord[];
   bodyConditions: Condition[];
   appointments?: Appointment[];
   examinations?: Examination[];

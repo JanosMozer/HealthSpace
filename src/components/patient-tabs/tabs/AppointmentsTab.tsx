@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -7,7 +8,9 @@ import { ChevronDown, ChevronUp, Clock, Calendar } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { format, parseISO, isAfter, startOfDay } from 'date-fns';
 import { Patient, Appointment } from '@/types/patient';
-import { supabase } from '@/lib/supabase'; // Added the missing import
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/hooks/use-auth';
+import { useToast } from '@/hooks/use-toast';
 
 interface AppointmentsTabProps {
   patient: Patient;
@@ -19,11 +22,13 @@ interface AppointmentsTabProps {
 const AppointmentsTab = ({ patient, isDoctor, onAddAppointment, setPatient }: AppointmentsTabProps) => {
   const [showPastAppointments, setShowPastAppointments] = useState(false);
   const today = startOfDay(new Date());
+  const { doctor } = useAuth();
+  const { toast } = useToast();
   
   const appointmentForm = useForm({
     defaultValues: {
       date: new Date().toISOString().split('T')[0],
-      time: '09:00', // Added time back
+      time: '09:00',
       type: '',
       place: '',
     }
@@ -71,48 +76,94 @@ const AppointmentsTab = ({ patient, isDoctor, onAddAppointment, setPatient }: Ap
     }
     
     try {
+      // Add doctor information
+      const doctorName = doctor?.name || 'Unknown Doctor';
+      const doctorId = doctor?.id;
+      
       const payload = {
         patient_id: patient.identifier,
         date: data.date,
-        time: data.time, // Added time back
+        time: data.time,
         type: data.type,
         place: data.place,
+        doctor_id: doctorId,
+        doctor_name: doctorName
       };
+      
       console.log("Submitting appointment (AppointmentsTab):", payload);
 
-      const { data: insertedData, error: insertError } = await supabase // Capture insertedData
+      const { data: insertedData, error: insertError } = await supabase
         .from('appointment')
         .insert(payload)
-        .select(); // Select the inserted row
+        .select();
         
       if (insertError) {
         console.error('Error adding appointment (AppointmentsTab):', insertError);
-        // Add toast notification for error
+        toast({
+          title: "Error",
+          description: "Failed to add appointment.",
+          variant: "destructive"
+        });
         return;
       }
       
+      // Add to medical history
+      const { error: historyError } = await supabase
+        .from('medical_history')
+        .insert({
+          patient_id: patient.id, // Use UUID here
+          date: data.date,
+          condition: `Appointment: ${data.type}`,
+          notes: `Scheduled for ${data.date} at ${data.time || 'N/A'}. Location: ${data.place}`,
+          doctor_id: doctorId,
+          doctor_name: doctorName,
+          record_type: 'appointment',
+        });
+      
+      if (historyError) console.error('Error adding to medical history:', historyError);
+      
       if (setPatient && insertedData && insertedData.length > 0) {
         const newAppointmentEntry = {
-          id: insertedData[0].id, // Use ID from DB
+          id: insertedData[0].id,
           date: insertedData[0].date,
-          time: insertedData[0].time, // Added time back
+          time: insertedData[0].time,
           type: insertedData[0].type,
           place: insertedData[0].place,
         };
+        
         setPatient(prev => ({
           ...prev,
           appointments: [
             ...(prev.appointments || []),
             newAppointmentEntry
+          ],
+          // Add to medical history
+          medicalHistory: [
+            {
+              date: data.date,
+              condition: `Appointment: ${data.type}`,
+              notes: `Scheduled for ${data.date} at ${data.time || 'N/A'}. Location: ${data.place}`,
+              doctorName: doctorName,
+              recordType: 'appointment',
+            },
+            ...prev.medicalHistory
           ]
         }));
       }
       
       appointmentForm.reset();
-      // Add toast notification for success
+      toast({
+        title: "Appointment added",
+        description: "The appointment has been saved successfully.",
+      });
+      
     } catch (error) {
       console.error('Error adding appointment (AppointmentsTab catch block):', error);
-      // Add toast notification for error
+      toast({
+        title: "Error",
+        description: "Failed to add appointment.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -156,7 +207,7 @@ const AppointmentsTab = ({ patient, isDoctor, onAddAppointment, setPatient }: Ap
               />
               <FormField
                 control={appointmentForm.control}
-                name="time" // Added time field back
+                name="time"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Time</FormLabel>

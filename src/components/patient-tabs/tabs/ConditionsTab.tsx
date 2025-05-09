@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import { useForm } from 'react-hook-form';
 import { BodyPart, Patient } from '@/types/patient';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/hooks/use-auth';
+import { useToast } from '@/hooks/use-toast';
 
 interface ConditionsTabProps {
   patient: Patient;
@@ -16,6 +18,9 @@ interface ConditionsTabProps {
 }
 
 const ConditionsTab = ({ patient, isDoctor, onAddCondition, setPatient }: ConditionsTabProps) => {
+  const { doctor } = useAuth();
+  const { toast } = useToast();
+  
   // Form for adding conditions with body part
   const conditionForm = useForm({
     defaultValues: {
@@ -51,33 +56,81 @@ const ConditionsTab = ({ patient, isDoctor, onAddCondition, setPatient }: Condit
     }
     
     try {
-      const { error } = await supabase
+      // Add doctor information to the condition
+      const doctorName = doctor?.name || 'Unknown Doctor';
+      const doctorId = doctor?.id;
+      const bodyPartLabel = bodyPartOptions.find(bp => bp.value === data.bodyPart)?.label || data.bodyPart;
+      
+      // Insert into conditions table
+      const { error: conditionError } = await supabase
         .from('conditions')
         .insert({
           patient_id: patient.id,
           body_part: data.bodyPart,
           description: data.description,
+          doctor_id: doctorId,
+          doctor_name: doctorName,
         });
         
-      if (error) throw error;
+      if (conditionError) throw conditionError;
+      
+      // Also add to medical history
+      const { error: historyError } = await supabase
+        .from('medical_history')
+        .insert({
+          patient_id: patient.id,
+          date: new Date().toISOString().split('T')[0],
+          condition: `Condition: ${bodyPartLabel}`,
+          notes: data.description,
+          doctor_id: doctorId,
+          doctor_name: doctorName,
+          record_type: 'condition',
+        });
+      
+      if (historyError) console.error('Error adding to medical history:', historyError);
       
       if (setPatient) {
-        setPatient(prev => ({
-          ...prev,
-          bodyConditions: [
-            ...prev.bodyConditions,
-            {
-              bodyPart: data.bodyPart,
-              description: data.description,
-            }
-          ]
-        }));
+        // Update the patient object with the new condition
+        setPatient(prev => {
+          const today = new Date().toISOString().split('T')[0];
+          
+          return {
+            ...prev,
+            bodyConditions: [
+              ...prev.bodyConditions,
+              {
+                bodyPart: data.bodyPart,
+                description: data.description,
+              }
+            ],
+            // Add to medical history too
+            medicalHistory: [
+              {
+                date: today,
+                condition: `Condition: ${bodyPartLabel}`,
+                notes: data.description,
+                doctorName: doctorName,
+                recordType: 'condition',
+              },
+              ...prev.medicalHistory
+            ]
+          };
+        });
       }
       
       conditionForm.reset();
+      toast({
+        title: "Condition added",
+        description: "The condition has been saved successfully.",
+      });
       
     } catch (error) {
       console.error('Error adding condition:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add condition.",
+        variant: "destructive"
+      });
     }
   };
 

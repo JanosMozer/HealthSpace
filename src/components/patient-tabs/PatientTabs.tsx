@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Patient, BodyPart } from '@/types/patient';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth';
 
 import TabsHeader from './TabsHeader';
 import AppointmentsTab from './tabs/AppointmentsTab';
@@ -35,6 +36,7 @@ const PatientTabs: React.FC<PatientTabsProps> = ({
   setPatient
 }) => {
   const { toast } = useToast();
+  const { doctor } = useAuth();
 
   return (
     <Card className="mt-6">

@@ -6,8 +6,10 @@ import { Form, FormField, FormItem, FormLabel, FormControl } from '@/components/
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useForm } from 'react-hook-form';
-import { Patient } from '@/types/patient';
+import { Patient, MedicalHistoryRecord } from '@/types/patient';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/hooks/use-auth';
+import { useToast } from '@/hooks/use-toast';
 
 interface MedicalHistoryTabProps {
   patient: Patient;
@@ -18,6 +20,8 @@ interface MedicalHistoryTabProps {
 
 const MedicalHistoryTab = ({ patient, isDoctor, onAddHistoryRecord, setPatient }: MedicalHistoryTabProps) => {
   const [expandedHistory, setExpandedHistory] = useState<string | null>(null);
+  const { doctor } = useAuth();
+  const { toast } = useToast();
 
   // Toggle history item expansion
   const toggleHistoryItem = (id: string) => {
@@ -30,6 +34,7 @@ const MedicalHistoryTab = ({ patient, isDoctor, onAddHistoryRecord, setPatient }
       date: new Date().toISOString().split('T')[0],
       condition: '',
       notes: '',
+      recordType: 'general',
     }
   });
 
@@ -40,6 +45,10 @@ const MedicalHistoryTab = ({ patient, isDoctor, onAddHistoryRecord, setPatient }
     }
     
     try {
+      // Add doctor information to the record
+      const doctorName = doctor?.name || 'Unknown Doctor';
+      const doctorId = doctor?.id;
+      
       const { error } = await supabase
         .from('medical_history')
         .insert({
@@ -47,6 +56,9 @@ const MedicalHistoryTab = ({ patient, isDoctor, onAddHistoryRecord, setPatient }
           date: data.date,
           condition: data.condition,
           notes: data.notes,
+          doctor_id: doctorId,
+          doctor_name: doctorName,
+          record_type: data.recordType,
         });
         
       if (error) throw error;
@@ -59,6 +71,8 @@ const MedicalHistoryTab = ({ patient, isDoctor, onAddHistoryRecord, setPatient }
               date: data.date,
               condition: data.condition,
               notes: data.notes,
+              doctorName: doctorName,
+              recordType: data.recordType,
             },
             ...prev.medicalHistory
           ]
@@ -66,9 +80,18 @@ const MedicalHistoryTab = ({ patient, isDoctor, onAddHistoryRecord, setPatient }
       }
       
       historyForm.reset();
+      toast({
+        title: "Medical record added",
+        description: "The medical record has been saved successfully.",
+      });
       
     } catch (error) {
       console.error('Error adding medical history:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add medical record.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -115,6 +138,26 @@ const MedicalHistoryTab = ({ patient, isDoctor, onAddHistoryRecord, setPatient }
                   </FormItem>
                 )}
               />
+              <FormField
+                control={historyForm.control}
+                name="recordType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Record Type</FormLabel>
+                    <FormControl>
+                      <select
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        {...field}
+                      >
+                        <option value="general">General</option>
+                        <option value="medication">Medication</option>
+                        <option value="condition">Medical Condition</option>
+                        <option value="appointment">Appointment</option>
+                      </select>
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
             </div>
             <FormField
               control={historyForm.control}
@@ -144,17 +187,29 @@ const MedicalHistoryTab = ({ patient, isDoctor, onAddHistoryRecord, setPatient }
           {patient.medicalHistory.map((entry, index) => (
             <div 
               key={index} 
-              className="border border-border rounded-md p-3 shadow-sm cursor-pointer"
+              className={`border rounded-md p-3 shadow-sm cursor-pointer ${entry.recordType ? `bg-${getRecordTypeColor(entry.recordType)}-50` : ''}`}
               onClick={() => toggleHistoryItem(`history-${index}`)}
             >
               <div className="flex justify-between items-center mb-2">
-                <h4 className="font-medium">{entry.condition}</h4>
-                <span className="text-xs text-muted-foreground">{entry.date}</span>
+                <div>
+                  <h4 className="font-medium">{entry.condition}</h4>
+                  {entry.doctorName && (
+                    <p className="text-xs text-muted-foreground">Doctor: {entry.doctorName}</p>
+                  )}
+                </div>
+                <div className="text-right">
+                  <span className="text-xs text-muted-foreground">{entry.date}</span>
+                  {entry.recordType && (
+                    <div className="text-xs mt-1 px-2 py-0.5 bg-muted inline-block rounded-full">
+                      {formatRecordType(entry.recordType)}
+                    </div>
+                  )}
+                </div>
               </div>
               {expandedHistory === `history-${index}` ? (
-                <p className="text-sm">{entry.notes}</p>
+                <p className="text-sm mt-2">{entry.notes}</p>
               ) : (
-                <p className="text-sm text-muted-foreground truncate">
+                <p className="text-sm text-muted-foreground truncate mt-1">
                   {entry.notes}
                 </p>
               )}
@@ -173,6 +228,25 @@ const MedicalHistoryTab = ({ patient, isDoctor, onAddHistoryRecord, setPatient }
       )}
     </TabsContent>
   );
+};
+
+const getRecordTypeColor = (recordType: string): string => {
+  switch (recordType) {
+    case 'medication': return 'blue';
+    case 'condition': return 'amber';
+    case 'appointment': return 'green';
+    default: return 'gray';
+  }
+};
+
+const formatRecordType = (recordType: string): string => {
+  switch (recordType) {
+    case 'medication': return 'Medication';
+    case 'condition': return 'Condition';
+    case 'appointment': return 'Appointment';
+    case 'general': return 'General';
+    default: return recordType.charAt(0).toUpperCase() + recordType.slice(1);
+  }
 };
 
 export default MedicalHistoryTab;

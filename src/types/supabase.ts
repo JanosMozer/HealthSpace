@@ -1,3 +1,4 @@
+
 export type Json =
   | string
   | number
@@ -71,6 +72,8 @@ export interface Database {
           body_part: string
           description: string
           created_at: string
+          doctor_id?: string
+          doctor_name?: string
         }
         Insert: {
           id?: string
@@ -78,6 +81,8 @@ export interface Database {
           body_part: string
           description: string
           created_at?: string
+          doctor_id?: string
+          doctor_name?: string
         }
         Update: {
           id?: string
@@ -85,6 +90,8 @@ export interface Database {
           body_part?: string
           description?: string
           created_at?: string
+          doctor_id?: string
+          doctor_name?: string
         }
       }
       medications: {
@@ -96,6 +103,8 @@ export interface Database {
           since: string
           current: boolean
           created_at: string
+          doctor_id?: string
+          doctor_name?: string
         }
         Insert: {
           id?: string
@@ -105,6 +114,8 @@ export interface Database {
           since: string
           current?: boolean
           created_at?: string
+          doctor_id?: string
+          doctor_name?: string
         }
         Update: {
           id?: string
@@ -114,6 +125,8 @@ export interface Database {
           since?: string
           current?: boolean
           created_at?: string
+          doctor_id?: string
+          doctor_name?: string
         }
       }
       medical_history: {
@@ -124,6 +137,9 @@ export interface Database {
           condition: string
           notes: string
           created_at: string
+          doctor_id?: string
+          doctor_name?: string
+          record_type?: string
         }
         Insert: {
           id?: string
@@ -132,6 +148,9 @@ export interface Database {
           condition: string
           notes: string
           created_at?: string
+          doctor_id?: string
+          doctor_name?: string
+          record_type?: string
         }
         Update: {
           id?: string
@@ -140,6 +159,9 @@ export interface Database {
           condition?: string
           notes?: string
           created_at?: string
+          doctor_id?: string
+          doctor_name?: string
+          record_type?: string
         }
       }
       appointments: {
@@ -151,6 +173,8 @@ export interface Database {
           type: string
           place: string
           created_at: string
+          doctor_id?: string
+          doctor_name?: string
         }
         Insert: {
           id?: string
@@ -160,6 +184,8 @@ export interface Database {
           type: string
           place: string
           created_at?: string
+          doctor_id?: string
+          doctor_name?: string
         }
         Update: {
           id?: string
@@ -169,6 +195,8 @@ export interface Database {
           type?: string
           place?: string
           created_at?: string
+          doctor_id?: string
+          doctor_name?: string
         }
       }
       appointment: {
@@ -180,6 +208,8 @@ export interface Database {
           type: string
           place: string
           created_at: string
+          doctor_id?: string
+          doctor_name?: string
         }
         Insert: {
           id?: string
@@ -189,6 +219,8 @@ export interface Database {
           type: string
           place: string
           created_at?: string
+          doctor_id?: string
+          doctor_name?: string
         }
         Update: {
           id?: string
@@ -198,6 +230,8 @@ export interface Database {
           type?: string
           place?: string
           created_at?: string
+          doctor_id?: string
+          doctor_name?: string
         }
       }
       examinations: {
@@ -208,6 +242,8 @@ export interface Database {
           name: string
           notes: string
           created_at: string
+          doctor_id?: string
+          doctor_name?: string
         }
         Insert: {
           id?: string
@@ -216,6 +252,8 @@ export interface Database {
           name: string
           notes: string
           created_at?: string
+          doctor_id?: string
+          doctor_name?: string
         }
         Update: {
           id?: string
@@ -224,6 +262,8 @@ export interface Database {
           name?: string
           notes?: string
           created_at?: string
+          doctor_id?: string
+          doctor_name?: string
         }
       }
     }
