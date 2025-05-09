@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import PatientInfo from '@/components/PatientInfo';
@@ -180,37 +179,23 @@ const PatientProfile = () => {
         }
         
         try {
+          // Make sure we're using the correct data type for patient_id
+          console.log("Fetching appointments for patient UUID:", patientUUID);
           const { data: appointmentsResult, error: appointmentsError } = await supabase
-            .from('appointment') // Singular table name
+            .from('appointment') 
             .select('*')
-            .eq('patient_id', patientUUID) // Use UUID instead of identifier
+            .eq('patient_id', patientUUID) 
             .order('date', { ascending: true });
           
           if (appointmentsError) {
             console.error('Error fetching appointments:', appointmentsError);
           } else if (appointmentsResult) {
             appointmentsData = appointmentsResult;
+            console.log("Appointments data retrieved:", appointmentsData);
           }
         } catch (e) {
           console.error('Failed to fetch appointments:', e);
         }
-        
-        // try {
-        //   // Fetch examinations - Temporarily disabled
-        //   const { data: examinations, error: examinationsError } = await supabase
-        //     .from('examinations')
-        //     .select('*')
-        //     .eq('patient_id', patientUUID) // Use UUID instead of identifier
-        //     .order('date', { ascending: false });
-          
-        //   if (examinationsError) {
-        //     console.error('Error fetching examinations:', examinationsError);
-        //   } else if (examinations) {
-        //     examinationsData = examinations;
-        //   }
-        // } catch (e) {
-        //   console.error('Failed to fetch examinations:', e);
-        // }
         
         const currentConditions = medicationsData?.map(med => ({
           name: med.name,

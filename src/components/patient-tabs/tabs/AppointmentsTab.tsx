@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -72,8 +71,8 @@ const AppointmentsTab = ({ patient, isDoctor, onAddAppointment, setPatient }: Ap
 
   // Submit appointment form
   const handleAppointmentSubmit = async (data: any) => {
-    if (!patient.identifier) {
-      console.error("Patient identifier is missing in AppointmentsTab");
+    if (!patient.id) {
+      console.error("Patient UUID is missing in AppointmentsTab");
       return;
     }
     
@@ -83,13 +82,14 @@ const AppointmentsTab = ({ patient, isDoctor, onAddAppointment, setPatient }: Ap
       const doctorId = doctor?.id;
       
       const payload = {
-        patient_id: patient.id,
+        patient_id: patient.id, // Using patient UUID, not identifier
         date: data.date,
         time: data.time,
         type: data.type,
         place: data.place,
         doctor_id: doctorId,
-        doctor_name: doctorName
+        doctor_name: doctorName,
+        doctor_workplace: doctor?.workplace || 'Unknown'
       };
       
       console.log("Submitting appointment (AppointmentsTab):", payload);

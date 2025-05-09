@@ -1,4 +1,3 @@
-
 export type Json =
   | string
   | number
@@ -202,7 +201,7 @@ export interface Database {
       appointment: {
         Row: {
           id: string
-          patient_id: number
+          patient_id: string
           date: string
           time?: string | null
           type: string
@@ -210,10 +209,11 @@ export interface Database {
           created_at: string
           doctor_id?: string
           doctor_name?: string
+          doctor_workplace?: string
         }
         Insert: {
           id?: string
-          patient_id: number
+          patient_id: string
           date: string
           time?: string | null
           type: string
@@ -221,10 +221,11 @@ export interface Database {
           created_at?: string
           doctor_id?: string
           doctor_name?: string
+          doctor_workplace?: string
         }
         Update: {
           id?: string
-          patient_id?: number
+          patient_id?: string
           date?: string
           time?: string | null
           type?: string
@@ -232,6 +233,7 @@ export interface Database {
           created_at?: string
           doctor_id?: string
           doctor_name?: string
+          doctor_workplace?: string
         }
       }
       examinations: {

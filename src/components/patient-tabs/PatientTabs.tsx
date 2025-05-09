@@ -28,41 +28,50 @@ const PatientTabs: React.FC<PatientTabsProps> = ({
   const { doctor } = useAuth();
 
   return (
-    <Card className="mt-6">
+    <Card className="mt-6 print:border-none">
       <Tabs defaultValue="appointments" className="w-full">
         <TabsHeader />
         
         <CardContent className="pt-6">
-          {/* Individual Tab Components */}
-          <AppointmentsTab 
-            patient={patient} 
-            isDoctor={isDoctor} 
-            setPatient={setPatient} 
-          />
+          <TabsContent value="appointments" className="mt-0">
+            <AppointmentsTab 
+              patient={patient} 
+              isDoctor={isDoctor} 
+              setPatient={setPatient} 
+            />
+          </TabsContent>
           
-          <MedicationsTab 
-            patient={patient} 
-            isDoctor={isDoctor} 
-            setPatient={setPatient} 
-          />
+          <TabsContent value="medications" className="mt-0">
+            <MedicationsTab 
+              patient={patient} 
+              isDoctor={isDoctor} 
+              setPatient={setPatient} 
+            />
+          </TabsContent>
           
-          <ConditionsTab 
-            patient={patient} 
-            isDoctor={isDoctor} 
-            setPatient={setPatient} 
-          />
+          <TabsContent value="conditions" className="mt-0">
+            <ConditionsTab 
+              patient={patient} 
+              isDoctor={isDoctor} 
+              setPatient={setPatient} 
+            />
+          </TabsContent>
           
-          <ExaminationsTab 
-            patient={patient} 
-            isDoctor={isDoctor} 
-            setPatient={setPatient} 
-          />
+          <TabsContent value="examinations" className="mt-0">
+            <ExaminationsTab 
+              patient={patient} 
+              isDoctor={isDoctor} 
+              setPatient={setPatient} 
+            />
+          </TabsContent>
           
-          <MedicalHistoryTab 
-            patient={patient} 
-            isDoctor={isDoctor} 
-            setPatient={setPatient} 
-          />
+          <TabsContent value="medicalHistory" className="mt-0">
+            <MedicalHistoryTab 
+              patient={patient} 
+              isDoctor={isDoctor} 
+              setPatient={setPatient} 
+            />
+          </TabsContent>
         </CardContent>
       </Tabs>
     </Card>
