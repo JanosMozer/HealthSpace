@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import PatientInfo from '@/components/PatientInfo';
@@ -122,9 +123,9 @@ const PatientProfile = () => {
         const patientData = patientsData[0];
         console.log("Patient data retrieved:", patientData);
         
-        // patientData.id is the UUID, patientData.identifier is the int8
-        const patientIdentifierForQueries = patientData.identifier; 
-        const patientUUIDForState = patientData.id;
+        // IMPORTANT: Use UUID, not identifier, for related table queries
+        const patientUUID = patientData.id;
+        const patientIdentifierForDisplay = patientData.identifier; 
 
         let conditionsData: any[] = [];
         let medicationsData: any[] = [];
@@ -136,7 +137,7 @@ const PatientProfile = () => {
           const { data: conditions, error: conditionsError } = await supabase
             .from('conditions')
             .select('*')
-            .eq('patient_id', patientIdentifierForQueries); // Use identifier
+            .eq('patient_id', patientUUID); // Use UUID instead of identifier
           
           if (conditionsError) {
             console.error('Error fetching conditions:', conditionsError);
@@ -151,7 +152,7 @@ const PatientProfile = () => {
           const { data: medications, error: medicationsError } = await supabase
             .from('medications')
             .select('*')
-            .eq('patient_id', patientIdentifierForQueries); // Use identifier
+            .eq('patient_id', patientUUID); // Use UUID instead of identifier
           
           if (medicationsError) {
             console.error('Error fetching medications:', medicationsError);
@@ -166,7 +167,7 @@ const PatientProfile = () => {
           const { data: history, error: historyError } = await supabase
             .from('medical_history')
             .select('*')
-            .eq('patient_id', patientIdentifierForQueries) // Use identifier
+            .eq('patient_id', patientUUID) // Use UUID instead of identifier
             .order('date', { ascending: false });
           
           if (historyError) {
@@ -182,7 +183,7 @@ const PatientProfile = () => {
           const { data: appointmentsResult, error: appointmentsError } = await supabase
             .from('appointment') // Singular table name
             .select('*')
-            .eq('patient_id', patientIdentifierForQueries) // Use identifier
+            .eq('patient_id', patientUUID) // Use UUID instead of identifier
             .order('date', { ascending: true });
           
           if (appointmentsError) {
@@ -199,7 +200,7 @@ const PatientProfile = () => {
         //   const { data: examinations, error: examinationsError } = await supabase
         //     .from('examinations')
         //     .select('*')
-        //     .eq('patient_id', patientIdentifierForQueries) // Use identifier
+        //     .eq('patient_id', patientUUID) // Use UUID instead of identifier
         //     .order('date', { ascending: false });
           
         //   if (examinationsError) {
@@ -222,18 +223,27 @@ const PatientProfile = () => {
           date: record.date,
           condition: record.condition,
           notes: record.notes,
+          doctorName: record.doctor_name || undefined,
+          doctorWorkplace: record.doctor_workplace || undefined,
+          recordType: record.record_type,
         })) || [];
         
         const bodyConditions = conditionsData?.map(condition => ({
           bodyPart: condition.body_part as BodyPart,
           description: condition.description,
+          doctorName: condition.doctor_name || undefined,
+          doctorWorkplace: condition.doctor_workplace || undefined,
+          diagnosisTime: condition.diagnosis_time || undefined,
+          diagnosisPlace: condition.diagnosis_place || undefined,
         })) || [];
         
         const appointments = appointmentsData?.map(appointment => ({
           date: appointment.date,
           type: appointment.type,
           place: appointment.place,
-          time: appointment.time, // Remove time if not in 'appointment' table
+          time: appointment.time, 
+          doctorName: appointment.doctor_name || undefined,
+          doctorWorkplace: appointment.doctor_workplace || undefined,
         })) || [];
         
         // const examinations = examinationsData?.map(exam => ({ // Temporarily disabled
@@ -243,12 +253,12 @@ const PatientProfile = () => {
         // })) || [];
         
         setPatient({
-          id: patientUUIDForState, // Use UUID for frontend state's main ID
+          id: patientUUID, // Store the UUID as the patient.id
           name: patientData.name || 'Patient',
           age: patientData.age || 0,
           dob: patientData.dob || '',
           gender: patientData.gender || '',
-          identifier: patientIdentifierForQueries, // Store the numeric identifier
+          identifier: patientIdentifierForDisplay, // Store the numeric identifier
           currentConditions,
           medicalHistory,
           bodyConditions,

@@ -23,6 +23,9 @@ export interface Condition {
   bodyPart: BodyPart;
   description: string;
   doctorName?: string;
+  doctorWorkplace?: string;
+  diagnosisTime?: string;
+  diagnosisPlace?: string;
 }
 
 // Appointment
@@ -33,6 +36,7 @@ export interface Appointment {
   type: string;
   place: string;
   doctorName?: string;
+  doctorWorkplace?: string;
   status?: 'pending' | 'done';
 }
 
@@ -42,6 +46,7 @@ export interface Examination {
   name: string;
   notes: string;
   doctorName?: string;
+  doctorWorkplace?: string;
   imageUrl?: string; // URL to the image stored in a cloud storage service
 }
 
@@ -51,6 +56,7 @@ export interface MedicalHistoryRecord {
   condition: string;
   notes: string;
   doctorName?: string;
+  doctorWorkplace?: string;
   recordType?: 'medication' | 'condition' | 'appointment' | 'general' | 'examination';
 }
 

@@ -9,6 +9,7 @@ import { BodyPart, Patient } from '@/types/patient';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface ConditionsTabProps {
   patient: Patient;
@@ -24,8 +25,10 @@ const ConditionsTab = ({ patient, isDoctor, onAddCondition, setPatient }: Condit
   // Form for adding conditions with body part
   const conditionForm = useForm({
     defaultValues: {
-      bodyPart: 'head' as BodyPart,
+      bodyPart: '' as BodyPart | '',
       description: '',
+      diagnosisPlace: '',
+      diagnosisTime: '',
     }
   });
 
@@ -51,15 +54,23 @@ const ConditionsTab = ({ patient, isDoctor, onAddCondition, setPatient }: Condit
 
   // Submit condition form
   const handleConditionSubmit = async (data: any) => {
-    if (!patient.id) {
+    if (!patient.id || !data.bodyPart) {
+      toast({
+        title: "Validation Error",
+        description: "Please select a body part",
+        variant: "destructive"
+      });
       return;
     }
     
     try {
       // Add doctor information to the condition
       const doctorName = doctor?.name || 'Unknown Doctor';
+      const doctorWorkplace = doctor?.workplace || '';
       const doctorId = doctor?.id;
       const bodyPartLabel = bodyPartOptions.find(bp => bp.value === data.bodyPart)?.label || data.bodyPart;
+      
+      const today = new Date().toISOString().split('T')[0];
       
       // Insert into conditions table
       const { error: conditionError } = await supabase
@@ -70,6 +81,9 @@ const ConditionsTab = ({ patient, isDoctor, onAddCondition, setPatient }: Condit
           description: data.description,
           doctor_id: doctorId,
           doctor_name: doctorName,
+          doctor_workplace: doctorWorkplace,
+          diagnosis_place: data.diagnosisPlace,
+          diagnosis_time: data.diagnosisTime,
         });
         
       if (conditionError) throw conditionError;
@@ -79,11 +93,12 @@ const ConditionsTab = ({ patient, isDoctor, onAddCondition, setPatient }: Condit
         .from('medical_history')
         .insert({
           patient_id: patient.id,
-          date: new Date().toISOString().split('T')[0],
+          date: today,
           condition: `Condition: ${bodyPartLabel}`,
           notes: data.description,
           doctor_id: doctorId,
           doctor_name: doctorName,
+          doctor_workplace: doctorWorkplace,
           record_type: 'condition',
         });
       
@@ -92,15 +107,17 @@ const ConditionsTab = ({ patient, isDoctor, onAddCondition, setPatient }: Condit
       if (setPatient) {
         // Update the patient object with the new condition
         setPatient(prev => {
-          const today = new Date().toISOString().split('T')[0];
-          
           return {
             ...prev,
             bodyConditions: [
               ...prev.bodyConditions,
               {
-                bodyPart: data.bodyPart,
+                bodyPart: data.bodyPart as BodyPart,
                 description: data.description,
+                doctorName,
+                doctorWorkplace,
+                diagnosisPlace: data.diagnosisPlace,
+                diagnosisTime: data.diagnosisTime,
               }
             ],
             // Add to medical history too
@@ -110,6 +127,7 @@ const ConditionsTab = ({ patient, isDoctor, onAddCondition, setPatient }: Condit
                 condition: `Condition: ${bodyPartLabel}`,
                 notes: data.description,
                 doctorName: doctorName,
+                doctorWorkplace: doctorWorkplace,
                 recordType: 'condition',
               },
               ...prev.medicalHistory
@@ -140,10 +158,11 @@ const ConditionsTab = ({ patient, isDoctor, onAddCondition, setPatient }: Condit
         <h3 className="text-xl font-bold">Medical Conditions</h3>
         {isDoctor && (
           <Button 
-            size="sm"
+            variant="outline"
             onClick={() => onAddCondition && onAddCondition('head')}
+            className="flex items-center gap-2"
           >
-            Add Condition
+            <span className="text-xs">+</span> Add Condition
           </Button>
         )}
       </div>
@@ -160,16 +179,20 @@ const ConditionsTab = ({ patient, isDoctor, onAddCondition, setPatient }: Condit
                   <FormItem>
                     <FormLabel>Body Part</FormLabel>
                     <FormControl>
-                      <select 
-                        className="w-full border border-border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                        {...field}
+                      <Select
+                        onValueChange={field.onChange}
                       >
-                        {bodyPartOptions.map(option => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select body part" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {bodyPartOptions.map(option => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </FormControl>
                   </FormItem>
                 )}
@@ -187,6 +210,32 @@ const ConditionsTab = ({ patient, isDoctor, onAddCondition, setPatient }: Condit
                 )}
               />
             </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={conditionForm.control}
+                name="diagnosisPlace"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Diagnosis Place</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Where was it diagnosed..." {...field} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={conditionForm.control}
+                name="diagnosisTime"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Diagnosis Time</FormLabel>
+                    <FormControl>
+                      <Input type="time" {...field} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+            </div>
             <div className="flex justify-end">
               <Button type="submit">Save Condition</Button>
             </div>
@@ -199,12 +248,24 @@ const ConditionsTab = ({ patient, isDoctor, onAddCondition, setPatient }: Condit
           {patient.bodyConditions.map((condition, index) => (
             <div key={index} className="bg-muted/50 p-3 rounded-md">
               <div className="flex justify-between">
-                <span className="font-medium capitalize">
-                  {bodyPartOptions.find(bp => bp.value === condition.bodyPart)?.label || 
-                    condition.bodyPart.replace(/([A-Z])/g, ' $1').trim()}
-                </span>
+                <div>
+                  <span className="font-medium capitalize">
+                    {bodyPartOptions.find(bp => bp.value === condition.bodyPart)?.label || 
+                      condition.bodyPart.replace(/([A-Z])/g, ' $1').trim()}
+                  </span>
+                  {condition.doctorName && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Doctor: {condition.doctorName}
+                      {condition.doctorWorkplace && `, ${condition.doctorWorkplace}`}
+                    </p>
+                  )}
+                </div>
+                <div className="text-right text-xs text-muted-foreground">
+                  {condition.diagnosisPlace && <p>Place: {condition.diagnosisPlace}</p>}
+                  {condition.diagnosisTime && <p>Time: {condition.diagnosisTime}</p>}
+                </div>
               </div>
-              <p className="text-sm mt-1">{condition.description}</p>
+              <p className="text-sm mt-2">{condition.description}</p>
             </div>
           ))}
         </div>

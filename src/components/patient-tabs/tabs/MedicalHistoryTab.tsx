@@ -10,6 +10,7 @@ import { Patient, MedicalHistoryRecord } from '@/types/patient';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface MedicalHistoryTabProps {
   patient: Patient;
@@ -52,6 +53,7 @@ const MedicalHistoryTab = ({ patient, isDoctor, onAddHistoryRecord, setPatient }
           condition: record.condition,
           notes: record.notes,
           doctorName: record.doctor_name || 'Unknown',
+          doctorWorkplace: record.doctor_workplace || '',
           recordType: record.record_type as MedicalHistoryRecord['recordType'],
         }));
         
@@ -96,6 +98,7 @@ const MedicalHistoryTab = ({ patient, isDoctor, onAddHistoryRecord, setPatient }
     try {
       // Add doctor information to the record
       const doctorName = doctor?.name || 'Unknown Doctor';
+      const doctorWorkplace = doctor?.workplace || '';
       const doctorId = doctor?.id;
       
       const { error } = await supabase
@@ -107,6 +110,7 @@ const MedicalHistoryTab = ({ patient, isDoctor, onAddHistoryRecord, setPatient }
           notes: data.notes,
           doctor_id: doctorId,
           doctor_name: doctorName,
+          doctor_workplace: doctorWorkplace,
           record_type: data.recordType,
         });
         
@@ -121,6 +125,7 @@ const MedicalHistoryTab = ({ patient, isDoctor, onAddHistoryRecord, setPatient }
               condition: data.condition,
               notes: data.notes,
               doctorName: doctorName,
+              doctorWorkplace: doctorWorkplace,
               recordType: data.recordType,
             },
             ...prev.medicalHistory
@@ -150,10 +155,11 @@ const MedicalHistoryTab = ({ patient, isDoctor, onAddHistoryRecord, setPatient }
         <h3 className="text-xl font-bold">Medical History</h3>
         {isDoctor && (
           <Button 
-            size="sm"
+            variant="outline"
             onClick={onAddHistoryRecord}
+            className="flex items-center gap-2"
           >
-            Add Medical Record
+            <span className="text-xs">+</span> Add Medical Record
           </Button>
         )}
       </div>
@@ -193,18 +199,21 @@ const MedicalHistoryTab = ({ patient, isDoctor, onAddHistoryRecord, setPatient }
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Record Type</FormLabel>
-                    <FormControl>
-                      <select
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                        {...field}
-                      >
-                        <option value="general">General</option>
-                        <option value="medication">Medication</option>
-                        <option value="condition">Medical Condition</option>
-                        <option value="appointment">Appointment</option>
-                        <option value="examination">Examination</option>
-                      </select>
-                    </FormControl>
+                    <Select
+                      defaultValue={field.value}
+                      onValueChange={field.onChange}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select record type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="general">General</SelectItem>
+                        <SelectItem value="medication">Medication</SelectItem>
+                        <SelectItem value="condition">Medical Condition</SelectItem>
+                        <SelectItem value="appointment">Appointment</SelectItem>
+                        <SelectItem value="examination">Examination</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </FormItem>
                 )}
               />
@@ -249,7 +258,10 @@ const MedicalHistoryTab = ({ patient, isDoctor, onAddHistoryRecord, setPatient }
                 <div>
                   <h4 className="font-medium">{entry.condition}</h4>
                   {entry.doctorName && (
-                    <p className="text-xs text-muted-foreground">Doctor: {entry.doctorName}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Doctor: {entry.doctorName}
+                      {entry.doctorWorkplace && `, ${entry.doctorWorkplace}`}
+                    </p>
                   )}
                 </div>
                 <div className="text-right">

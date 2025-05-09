@@ -1,3 +1,4 @@
+
 import { createClient } from '@supabase/supabase-js';
 import { Database } from '@/types/supabase';
 
@@ -68,14 +69,16 @@ export const getSupabaseStatus = async () => {
     
     // Check if tables exist and have the right structure
     try {
-      // Check schema definitions - removing the catch that was causing the error
-      const { data: tableList } = await supabase
-        .from('_metadata')
-        .select('name');
-        
-      if (tableList) {
-        console.log('Database tables:', tableList);
-      }
+      // Log the database tables currently in use
+      console.log('Database Tables:');
+      console.log('----------------');
+      console.log('patients - Stores patient information (id, identifier, name, age, dob, gender)');
+      console.log('doctors - Stores doctor information (id, email, name, workplace, identifier)');
+      console.log('conditions - Stores patient medical conditions (id, patient_id, body_part, description, doctor_id, doctor_name, doctor_workplace, diagnosis_place, diagnosis_time)');
+      console.log('medications - Stores patient medications (id, patient_id, name, dosage, since, current, doctor_id, doctor_name, doctor_workplace)');
+      console.log('medical_history - Stores comprehensive medical history (id, patient_id, date, condition, notes, doctor_id, doctor_name, doctor_workplace, record_type)');
+      console.log('appointment - Stores patient appointments (id, patient_id, date, time, type, place, doctor_id, doctor_name, doctor_workplace)');
+      console.log('examinations - (Future) Will store examination records with images (id, patient_id, date, name, notes, image_url, doctor_id, doctor_name, doctor_workplace)');
     } catch (e) {
       // Ignore error, this is just diagnostic
       console.log('Could not check table definitions:', e);
@@ -110,15 +113,6 @@ export const initializeDatabase = async () => {
       }))
     );
     
-    // Check RLS policies (optional, can be removed if not used)
-    // const { data: policies, error: rpcError } = await supabase.rpc('get_policies');
-    // if (rpcError) {
-    //   console.warn('Could not check RLS policies:', rpcError);
-    //   supabaseErrors.rlsPolicies = rpcError.message;
-    // } else {
-    //   console.log('RLS Policies:', policies);
-    // }
-    
     return true;
   } catch (error) {
     console.error('Database initialization error:', error);
@@ -140,3 +134,84 @@ export const enableServiceRole = async () => {
   // This is just for debugging purposes - would require a service role key in production
   return false;
 };
+
+/* 
+DATABASE TABLE STRUCTURE:
+
+1. patients
+   - id: UUID (primary key)
+   - identifier: INT8 (unique patient number)
+   - name: VARCHAR
+   - age: INT4
+   - dob: DATE
+   - gender: VARCHAR
+   - created_at: TIMESTAMP
+
+2. doctors
+   - id: UUID (primary key)
+   - email: VARCHAR
+   - name: VARCHAR
+   - workplace: VARCHAR
+   - identifier: VARCHAR
+   - created_at: TIMESTAMP
+
+3. conditions
+   - id: UUID (primary key)
+   - patient_id: UUID (references patients.id)
+   - body_part: VARCHAR
+   - description: TEXT
+   - doctor_id: UUID (references doctors.id)
+   - doctor_name: VARCHAR
+   - doctor_workplace: VARCHAR
+   - diagnosis_place: VARCHAR
+   - diagnosis_time: TIME
+   - created_at: TIMESTAMP
+
+4. medications
+   - id: UUID (primary key)
+   - patient_id: UUID (references patients.id)
+   - name: VARCHAR
+   - dosage: VARCHAR
+   - since: DATE
+   - current: BOOLEAN
+   - doctor_id: UUID (references doctors.id)
+   - doctor_name: VARCHAR
+   - doctor_workplace: VARCHAR
+   - created_at: TIMESTAMP
+
+5. medical_history
+   - id: UUID (primary key)
+   - patient_id: UUID (references patients.id)
+   - date: DATE
+   - condition: VARCHAR
+   - notes: TEXT
+   - doctor_id: UUID (references doctors.id)
+   - doctor_name: VARCHAR
+   - doctor_workplace: VARCHAR
+   - record_type: VARCHAR
+   - created_at: TIMESTAMP
+
+6. appointment
+   - id: UUID (primary key)
+   - patient_id: UUID (references patients.id)
+   - date: DATE
+   - time: TIME
+   - type: VARCHAR
+   - place: VARCHAR
+   - doctor_id: UUID (references doctors.id)
+   - doctor_name: VARCHAR
+   - doctor_workplace: VARCHAR
+   - created_at: TIMESTAMP
+
+7. examinations (For future use with image storage)
+   - id: UUID (primary key)
+   - patient_id: UUID (references patients.id)
+   - date: DATE
+   - name: VARCHAR
+   - notes: TEXT
+   - image_url: VARCHAR (URL to stored image)
+   - doctor_id: UUID (references doctors.id)
+   - doctor_name: VARCHAR
+   - doctor_workplace: VARCHAR
+   - created_at: TIMESTAMP
+*/
