@@ -290,7 +290,7 @@ const PatientProfile = () => {
     <div className="min-h-screen bg-white">
       <PatientHeader 
         connectionStatus={connectionStatus} 
-        patientName={patient.name}
+        patient={patient}
       />
       
       <main className="container max-w-7xl mx-auto py-8 px-4">
