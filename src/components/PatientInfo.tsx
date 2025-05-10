@@ -1,8 +1,9 @@
 
 import { Button } from "@/components/ui/button";
 import { Patient } from "@/types/patient";
-import { CalendarDays, User, Calendar } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import BodyDiagram from "./BodyDiagram";
+import { CalendarDays, Pill } from "lucide-react";
 
 interface PatientInfoProps {
   patient: Patient;
@@ -15,40 +16,100 @@ const PatientInfo: React.FC<PatientInfoProps> = ({
   isReadOnly,
   onAddHistory
 }) => {
+  // Filter for upcoming appointments (today or in the future)
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const upcomingAppointments = patient.appointments
+    ?.filter(appointment => {
+      const appointmentDate = new Date(appointment.date);
+      appointmentDate.setHours(0, 0, 0, 0);
+      return appointmentDate >= today;
+    })
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .slice(0, 3) || [];
+
+  // Filter for current medications
+  const currentMedications = patient.currentConditions?.filter(med => med.current !== false).slice(0, 5) || [];
+
   return (
     <Card className="mb-6">
       <CardContent className="p-6">
-        <div className="flex flex-col md:flex-row justify-between">
-          <div className="flex-1">
-            <h1 className="text-3xl font-bold text-primary">{patient.name}</h1>
-            <div className="mt-2 space-y-1 text-muted-foreground">
-              <p className="flex items-center gap-2">
-                <User className="w-4 h-4" />
-                ID: {patient.identifier}
-              </p>
-              <p className="flex items-center gap-2">
-                <CalendarDays className="w-4 h-4" />
-                {patient.age} years old ({patient.gender})
-              </p>
-              <p className="flex items-center gap-2">
-                <Calendar className="w-4 h-4" />
-                DOB: {patient.dob ? new Date(patient.dob).toLocaleDateString() : 'N/A'}
-              </p>
+        <div className="flex flex-col md:flex-row justify-between gap-6">
+          {/* Left column - Upcoming appointments and current medications */}
+          <div className="flex-1 space-y-6">
+            {/* Upcoming appointments */}
+            <div>
+              <h2 className="text-lg font-medium flex items-center gap-2 mb-3">
+                <CalendarDays className="w-5 h-5 text-primary" />
+                Upcoming Appointments
+              </h2>
+              
+              {upcomingAppointments.length > 0 ? (
+                <div className="space-y-3">
+                  {upcomingAppointments.map((appointment, index) => (
+                    <div key={index} className="p-3 bg-muted/50 rounded-md">
+                      <div className="flex justify-between">
+                        <div className="font-medium">{appointment.type}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {new Date(appointment.date).toLocaleDateString()} {appointment.time}
+                        </div>
+                      </div>
+                      <div className="text-sm">{appointment.place}</div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No upcoming appointments</p>
+              )}
+            </div>
+            
+            {/* Current medications */}
+            <div>
+              <h2 className="text-lg font-medium flex items-center gap-2 mb-3">
+                <Pill className="w-5 h-5 text-primary" />
+                Current Medications
+              </h2>
+              
+              {currentMedications.length > 0 ? (
+                <div className="space-y-2">
+                  {currentMedications.map((medication, index) => (
+                    <div key={index} className="p-3 bg-muted/50 rounded-md">
+                      <div className="font-medium">{medication.name}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {medication.medications?.join(", ")}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No current medications</p>
+              )}
             </div>
           </div>
           
-          <div className="flex items-start mt-4 md:mt-0">
-            {!isReadOnly && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="mr-2"
-                onClick={() => window.print()}
-              >
-                Print Records
-              </Button>
-            )}
+          {/* Right column - Body diagram placeholder */}
+          <div className="flex-1 border-l pl-6">
+            <h2 className="text-lg font-medium mb-3">Medical Conditions</h2>
+            <div className="h-[300px] flex items-center justify-center">
+              <BodyDiagram 
+                conditions={patient.bodyConditions || []}
+                readOnly={true}
+              />
+            </div>
           </div>
+        </div>
+        
+        <div className="flex justify-end mt-4">
+          {!isReadOnly && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => window.print()}
+            >
+              Print Records
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>

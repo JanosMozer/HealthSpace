@@ -3,13 +3,14 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, LogOut, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
+import { Patient } from '@/types/patient';
 
 interface PatientHeaderProps {
   connectionStatus: any;
-  patientName?: string;
+  patient?: Patient;
 }
 
-const PatientHeader = ({ connectionStatus, patientName = 'Patient Profile' }: PatientHeaderProps) => {
+const PatientHeader = ({ connectionStatus, patient }: PatientHeaderProps) => {
   const navigate = useNavigate();
   const { logout, isDoctor, doctor } = useAuth();
 
@@ -43,15 +44,30 @@ const PatientHeader = ({ connectionStatus, patientName = 'Patient Profile' }: Pa
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            {isDoctor && doctor && (
-              <h1 className="text-lg font-bold text-white">{doctor.name}</h1>
-            )}
-            {!isDoctor && (
-              <h1 className="text-lg font-bold text-white">{patientName}</h1>
+            {/* Display patient information in header */}
+            {patient && (
+              <div className="text-white">
+                <h1 className="text-lg font-bold">{patient.name}</h1>
+                <div className="flex items-center text-xs space-x-4">
+                  <span>ID: {patient.identifier}</span>
+                  <span>{patient.age} years ({patient.gender})</span>
+                  <span>DOB: {patient.dob ? new Date(patient.dob).toLocaleDateString() : 'N/A'}</span>
+                </div>
+              </div>
             )}
           </div>
           
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-4">
+            {/* Doctor information */}
+            {isDoctor && doctor && (
+              <div className="hidden md:block text-right text-white text-sm">
+                <span>{doctor.name}</span>
+                {doctor.workplace && (
+                  <span className="ml-1">, {doctor.workplace}</span>
+                )}
+              </div>
+            )}
+            
             {isDoctor && (
               <Button 
                 variant="ghost" 
