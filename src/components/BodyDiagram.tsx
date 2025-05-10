@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BodyPart } from '@/types/patient';
 
 interface Condition {
@@ -16,26 +16,76 @@ interface BodyDiagramProps {
 const BodyDiagram = ({ conditions = [], onAddCondition, readOnly = false }: BodyDiagramProps) => {
   const [selectedPart, setSelectedPart] = useState<BodyPart | null>(null);
   const [hoveredPart, setHoveredPart] = useState<BodyPart | null>(null);
+  const [organSVGs, setOrganSVGs] = useState<Record<string, string>>({});
+  
+  // Available body parts and their corresponding SVG files
+  const bodyPartSVGs: Record<BodyPart, string> = {
+    brain: 'brain.svg',
+    heart: 'heart.svg',
+    lungs: 'lungs.svg',
+    liver: 'liver.svg',
+    stomach: 'stomach.svg',
+    pancreas: 'pancreas.svg',
+    largeIntestine: 'large_intestine.svg',
+    kidneys: 'kidney.svg', // Note: file is kidney.svg but part is kidneys
+    thyroid: 'thyroid.svg',
+    bladder: 'bladder.svg',
+    smallIntestine: '', // No SVG file for these parts
+    head: '',
+    leftArm: '',
+    rightArm: '',
+    leftLeg: '',
+    rightLeg: ''
+  };
+  
+  // Load SVG content for each organ
+  useEffect(() => {
+    const loadOrganSVGs = async () => {
+      const loadedSVGs: Record<string, string> = {};
+      
+      for (const [part, svgFile] of Object.entries(bodyPartSVGs)) {
+        if (svgFile) {
+          try {
+            const response = await fetch(`/SVG_parts/${svgFile}`);
+            if (response.ok) {
+              const svgContent = await response.text();
+              loadedSVGs[part] = extractSVGContent(svgContent);
+            } else {
+              console.error(`Failed to load SVG for ${part}: ${response.status}`);
+            }
+          } catch (error) {
+            console.error(`Error loading SVG for ${part}:`, error);
+          }
+        }
+      }
+      
+      setOrganSVGs(loadedSVGs);
+    };
+    
+    loadOrganSVGs();
+  }, []);
+  
+  // Helper function to extract the inner content from SVG
+  const extractSVGContent = (svgString: string): string => {
+    const parser = new DOMParser();
+    const svgDoc = parser.parseFromString(svgString, 'image/svg+xml');
+    const svgElement = svgDoc.querySelector('svg');
+    
+    if (!svgElement) return '';
+    
+    // Get only the path/group elements inside the SVG
+    return Array.from(svgElement.children)
+      .filter(node => node.tagName !== 'title' && node.tagName !== 'desc')
+      .map(node => node.outerHTML)
+      .join('');
+  };
   
   // Get condition for a body part
   const getCondition = (part: BodyPart) => {
     return conditions.find(condition => condition.bodyPart === part);
   };
   
-  // Get CSS class for a body part based on condition severity
-  const getPartClass = (part: BodyPart) => {
-    const condition = getCondition(part);
-    const isHovered = hoveredPart === part;
-    const baseClasses = "transition-all duration-300 " + (readOnly ? "" : "cursor-pointer ");
-    
-    if (!condition) {
-      return baseClasses + (isHovered && !readOnly ? "fill-gray-300" : "fill-gray-200");
-    }
-    
-    // Highlight affected body parts with a consistent color
-    return baseClasses + "fill-primary";
-  };
-  
+  // Handle click on a body part
   const handlePartClick = (part: BodyPart) => {
     if (readOnly) return;
     
@@ -46,204 +96,141 @@ const BodyDiagram = ({ conditions = [], onAddCondition, readOnly = false }: Body
     }
   };
 
+  // Handle hover on a body part
   const handlePartHover = (part: BodyPart | null) => {
     if (readOnly) return;
     setHoveredPart(part);
   };
+  
+  // Get CSS class for a body part based on condition
+  const getPartClass = (part: BodyPart) => {
+    const condition = getCondition(part);
+    const isHovered = hoveredPart === part;
+    const baseClasses = "transition-all duration-300 " + (readOnly ? "" : "cursor-pointer ");
+    
+    if (!condition) {
+      return baseClasses + (isHovered && !readOnly ? "fill-gray-300" : "fill-gray-200");
+    }
+    
+    // Highlight affected body parts
+    return baseClasses + "fill-primary";
+  };
+
+  // Get affected body parts from conditions
+  const affectedParts = conditions.map(condition => condition.bodyPart);
 
   return (
     <div className="relative">
-      {/* SVG Human Body Diagram - Anatomical Version */}
-      <svg viewBox="0 0 400 600" className="w-full mx-auto">
-        {/* Body outline */}
-        <path 
-          d="M200,50 C230,50 260,65 260,100 C260,120 250,135 240,150 L240,200 L260,230 L260,350 
-             C260,350 250,450 240,500 C235,525 220,560 200,575 
-             C180,560 165,525 160,500 C150,450 140,350 140,350 
-             L140,230 L160,200 L160,150 C150,135 140,120 140,100 
-             C140,65 170,50 200,50 Z"
-          className="fill-[#ffe0d0] stroke-[#ccc]"
+      {/* Human Silhouette with Organ Overlays */}
+      <div className="relative w-full max-w-[300px] mx-auto">
+        {/* Base Silhouette */}
+        <img 
+          src="/SVG_parts/standing_human_body_silhouette.svg" 
+          alt="Human body silhouette"
+          className="w-full h-auto"
         />
         
-        {/* Head and Brain */}
-        <circle 
-          cx="200" 
-          cy="50" 
-          r="30" 
-          className={getPartClass('head')}
-          onClick={() => handlePartClick('head')}
-          onMouseEnter={() => handlePartHover('head')}
-          onMouseLeave={() => handlePartHover(null)}
-        />
-        <path 
-          d="M185,35 C195,25 205,25 215,35 C225,45 225,55 215,65 C205,75 195,75 185,65 C175,55 175,45 185,35 Z"
-          className={getPartClass('brain')}
-          onClick={() => handlePartClick('brain')}
-          onMouseEnter={() => handlePartHover('brain')}
-          onMouseLeave={() => handlePartHover(null)}
-        />
-        
-        {/* Thyroid */}
-        <ellipse 
-          cx="200" 
-          cy="95" 
-          rx="10" 
-          ry="5" 
-          className={getPartClass('thyroid')}
-          onClick={() => handlePartClick('thyroid')}
-          onMouseEnter={() => handlePartHover('thyroid')}
-          onMouseLeave={() => handlePartHover(null)}
-        />
-        
-        {/* Heart */}
-        <path 
-          d="M185,160 C175,150 175,140 185,130 C195,120 205,120 215,130 C225,140 225,150 215,160 L200,175 Z"
-          className={getPartClass('heart')}
-          onClick={() => handlePartClick('heart')}
-          onMouseEnter={() => handlePartHover('heart')}
-          onMouseLeave={() => handlePartHover(null)}
-        />
-        
-        {/* Lungs */}
-        <path 
-          d="M170,140 C155,150 155,180 170,190 C175,193 180,193 180,190 L180,140 C180,137 175,137 170,140 Z
-             M230,140 C245,150 245,180 230,190 C225,193 220,193 220,190 L220,140 C220,137 225,137 230,140 Z"
-          className={getPartClass('lungs')}
-          onClick={() => handlePartClick('lungs')}
-          onMouseEnter={() => handlePartHover('lungs')}
-          onMouseLeave={() => handlePartHover(null)}
-        />
-        
-        {/* Liver */}
-        <path 
-          d="M170,210 C160,210 155,220 160,230 C165,240 170,245 180,245 C190,245 190,230 190,220 L190,210 Z"
-          className={getPartClass('liver')}
-          onClick={() => handlePartClick('liver')}
-          onMouseEnter={() => handlePartHover('liver')}
-          onMouseLeave={() => handlePartHover(null)}
-        />
-        
-        {/* Stomach */}
-        <path 
-          d="M195,210 C205,210 215,215 220,225 C225,235 220,245 210,250 C200,255 195,250 190,245 
-             C185,240 185,220 195,210 Z"
-          className={getPartClass('stomach')}
-          onClick={() => handlePartClick('stomach')}
-          onMouseEnter={() => handlePartHover('stomach')}
-          onMouseLeave={() => handlePartHover(null)}
-        />
-        
-        {/* Pancreas */}
-        <ellipse 
-          cx="200" 
-          cy="260" 
-          rx="20" 
-          ry="5" 
-          className={getPartClass('pancreas')}
-          onClick={() => handlePartClick('pancreas')}
-          onMouseEnter={() => handlePartHover('pancreas')}
-          onMouseLeave={() => handlePartHover(null)}
-        />
-        
-        {/* Small Intestine */}
-        <path 
-          d="M185,270 C175,275 170,280 170,290 C170,300 180,310 190,310 
-             C200,310 210,300 210,290 C210,280 205,275 195,270 Z"
-          className={getPartClass('smallIntestine')}
-          onClick={() => handlePartClick('smallIntestine')}
-          onMouseEnter={() => handlePartHover('smallIntestine')}
-          onMouseLeave={() => handlePartHover(null)}
-        />
-        
-        {/* Large Intestine */}
-        <path 
-          d="M165,320 C160,320 160,330 165,335 C170,340 180,340 190,335 
-             C200,330 210,330 220,335 C225,340 225,345 220,350 
-             C215,355 205,355 195,350 C185,345 175,345 170,350 
-             C165,355 165,360 170,365 C175,370 185,370 195,365"
-          className={getPartClass('largeIntestine')}
-          onClick={() => handlePartClick('largeIntestine')}
-          onMouseEnter={() => handlePartHover('largeIntestine')}
-          onMouseLeave={() => handlePartHover(null)}
-          fill="none"
-          strokeWidth="10"
-          stroke="currentColor"
-        />
-        
-        {/* Kidneys */}
-        <path 
-          d="M170,280 C165,275 165,270 170,265 C175,260 175,260 170,255 
-             C165,250 160,255 160,260 C160,265 160,275 165,280 Z
-             M230,280 C235,275 235,270 230,265 C225,260 225,260 230,255 
-             C235,250 240,255 240,260 C240,265 240,275 235,280 Z"
-          className={getPartClass('kidneys')}
-          onClick={() => handlePartClick('kidneys')}
-          onMouseEnter={() => handlePartHover('kidneys')}
-          onMouseLeave={() => handlePartHover(null)}
-        />
-        
-        {/* Bladder */}
-        <ellipse 
-          cx="200" 
-          cy="380" 
-          rx="15" 
-          ry="10" 
-          className={getPartClass('bladder')}
-          onClick={() => handlePartClick('bladder')}
-          onMouseEnter={() => handlePartHover('bladder')}
-          onMouseLeave={() => handlePartHover(null)}
-        />
-        
-        {/* Arms */}
-        <rect 
-          x="120" 
-          y="150" 
-          width="20" 
-          height="100" 
-          rx="10"
-          className={getPartClass('leftArm')}
-          onClick={() => handlePartClick('leftArm')}
-          onMouseEnter={() => handlePartHover('leftArm')}
-          onMouseLeave={() => handlePartHover(null)}
-        />
-        
-        <rect 
-          x="260" 
-          y="150" 
-          width="20" 
-          height="100" 
-          rx="10"
-          className={getPartClass('rightArm')}
-          onClick={() => handlePartClick('rightArm')}
-          onMouseEnter={() => handlePartHover('rightArm')}
-          onMouseLeave={() => handlePartHover(null)}
-        />
-        
-        {/* Legs */}
-        <rect 
-          x="175" 
-          y="400" 
-          width="20" 
-          height="150" 
-          rx="10"
-          className={getPartClass('leftLeg')}
-          onClick={() => handlePartClick('leftLeg')}
-          onMouseEnter={() => handlePartHover('leftLeg')}
-          onMouseLeave={() => handlePartHover(null)}
-        />
-        
-        <rect 
-          x="205" 
-          y="400" 
-          width="20" 
-          height="150" 
-          rx="10"
-          className={getPartClass('rightLeg')}
-          onClick={() => handlePartClick('rightLeg')}
-          onMouseEnter={() => handlePartHover('rightLeg')}
-          onMouseLeave={() => handlePartHover(null)}
-        />
-      </svg>
+        {/* Organ SVG Overlays */}
+        <svg 
+          className="absolute top-0 left-0 w-full h-full" 
+          viewBox="0 0 512 1024" 
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          {Object.entries(organSVGs).map(([part, svgContent]) => {
+            const bodyPart = part as BodyPart;
+            const isAffected = affectedParts.includes(bodyPart);
+            
+            if (!isAffected) return null;
+            
+            // Position and scale the organs appropriately
+            let transform = "";
+            switch (bodyPart) {
+              case 'brain':
+                transform = "translate(170, 60) scale(0.8)";
+                break;
+              case 'heart':
+                transform = "translate(200, 220) scale(0.6)";
+                break;
+              case 'lungs':
+                transform = "translate(150, 200) scale(0.8)";
+                break;
+              case 'liver':
+                transform = "translate(190, 280) scale(0.7)";
+                break;
+              case 'stomach':
+                transform = "translate(220, 300) scale(0.7)";
+                break;
+              case 'pancreas':
+                transform = "translate(200, 320) scale(0.7)";
+                break;
+              case 'largeIntestine':
+                transform = "translate(170, 350) scale(0.7)";
+                break;
+              case 'kidneys':
+                transform = "translate(170, 300) scale(0.7)";
+                break;
+              case 'thyroid':
+                transform = "translate(210, 150) scale(0.6)";
+                break;
+              case 'bladder':
+                transform = "translate(210, 400) scale(0.6)";
+                break;
+              default:
+                transform = "";
+            }
+            
+            return (
+              <g 
+                key={bodyPart}
+                transform={transform} 
+                className={getPartClass(bodyPart)}
+                onClick={() => handlePartClick(bodyPart)}
+                onMouseEnter={() => handlePartHover(bodyPart)}
+                onMouseLeave={() => handlePartHover(null)}
+                dangerouslySetInnerHTML={{ __html: svgContent }}
+              />
+            );
+          })}
+          
+          {/* Clickable regions for parts without specific SVGs */}
+          {['head', 'leftArm', 'rightArm', 'leftLeg', 'rightLeg'].map((partName) => {
+            const part = partName as BodyPart;
+            const isAffected = affectedParts.includes(part);
+            
+            let pathData = "";
+            switch (part) {
+              case 'head':
+                pathData = "M256,100 a50,60 0 1,0 0.1,0 z";
+                break;
+              case 'leftArm':
+                pathData = "M180,240 L120,380 L150,400 L190,260 z";
+                break;
+              case 'rightArm':
+                pathData = "M320,240 L380,380 L350,400 L310,260 z";
+                break;
+              case 'leftLeg':
+                pathData = "M230,500 L200,900 L240,900 L260,500 z";
+                break;
+              case 'rightLeg':
+                pathData = "M280,500 L310,900 L270,900 L250,500 z";
+                break;
+              default:
+                return null;
+            }
+            
+            return (
+              <path 
+                key={part}
+                d={pathData}
+                className={`${isAffected ? 'fill-primary opacity-40' : 'fill-transparent'} stroke-transparent hover:fill-gray-300 hover:opacity-30 cursor-pointer`}
+                onClick={() => handlePartClick(part)}
+                onMouseEnter={() => handlePartHover(part)}
+                onMouseLeave={() => handlePartHover(null)}
+              />
+            );
+          })}
+        </svg>
+      </div>
       
       {/* Hover labels for organs */}
       {hoveredPart && !readOnly && (
