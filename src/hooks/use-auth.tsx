@@ -5,6 +5,7 @@ import { Doctor } from '@/types/patient';
 import { useNavigate } from 'react-router-dom';
 
 interface AuthContextType {
+  user: { email: string } | null; // Add user property to fix the error
   doctor: Doctor | null;
   isDoctor: boolean;
   loading: boolean;
@@ -17,13 +18,16 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [doctor, setDoctor] = useState<Doctor | null>(null);
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<{ email: string } | null>(null); // Add user state
 
   useEffect(() => {
     // Check for stored session
     const storedDoctor = sessionStorage.getItem('doctor');
     if (storedDoctor) {
       try {
-        setDoctor(JSON.parse(storedDoctor));
+        const doctorData = JSON.parse(storedDoctor);
+        setDoctor(doctorData);
+        setUser({ email: doctorData.email }); // Set user email from doctor data
       } catch (e) {
         console.error('Failed to parse stored doctor:', e);
         sessionStorage.removeItem('doctor');
@@ -51,6 +55,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // In a real app, we'd check the hashed password here
       // For now, just simulate successful login with any password
       setDoctor(data);
+      setUser({ email: data.email }); // Set user email
       sessionStorage.setItem('doctor', JSON.stringify(data));
       
       return { success: true, message: `Welcome, Dr. ${data.name}!` };
@@ -62,6 +67,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = () => {
     setDoctor(null);
+    setUser(null); // Clear user
     sessionStorage.removeItem('doctor');
     sessionStorage.removeItem('userType');
     
@@ -70,7 +76,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ doctor, isDoctor: !!doctor, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, doctor, isDoctor: !!doctor, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

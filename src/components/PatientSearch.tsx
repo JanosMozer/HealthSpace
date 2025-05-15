@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -8,7 +9,7 @@ import AddPatientForm from './AddPatientForm';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from "@/components/ui/skeleton";
-import { debounce } from 'lodash';
+import debounce from 'lodash/debounce';
 
 // Define an interface for the patient data including gender
 interface PatientSearchResult {

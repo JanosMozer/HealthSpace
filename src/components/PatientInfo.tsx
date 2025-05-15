@@ -9,14 +9,14 @@ interface PatientInfoProps {
   patient: Patient;
   isReadOnly: boolean;
   onAddHistory?: () => void;
-  onNavigateToConditions?: () => void; // Add this prop
+  onNavigateToConditions?: () => void;
 }
 
 const PatientInfo: React.FC<PatientInfoProps> = ({ 
   patient,
   isReadOnly,
   onAddHistory,
-  onNavigateToConditions // Add this prop
+  onNavigateToConditions
 }) => {
   // Filter for upcoming appointments (today or in the future)
   const today = new Date();
@@ -97,7 +97,7 @@ const PatientInfo: React.FC<PatientInfoProps> = ({
               <BodyDiagram 
                 conditions={patient.bodyConditions || []}
                 readOnly={true}
-                onBodyPartClick={onNavigateToConditions} // Add this prop
+                onNavigateToConditions={onNavigateToConditions}
               />
             </div>
           </div>
