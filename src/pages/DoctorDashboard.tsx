@@ -1,4 +1,3 @@
-
 import PatientSearch from '@/components/PatientSearch';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
@@ -18,7 +17,7 @@ const DoctorDashboard = () => {
       <header className="border-b border-border bg-primary">
         <div className="medical-container flex h-16 items-center justify-between">
           <div className="flex items-center space-x-4">
-            <h1 className="text-lg font-bold text-white">PatientCanvas</h1>
+            <h1 className="text-lg font-bold text-white">HealthSpace</h1>
             {doctor && (
               <span className="text-sm text-white/80">
                 Dr. {doctor.name}

@@ -1,7 +1,6 @@
-
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, LogOut, Search } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, LogOut, Search, HeartPulse } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
 import { Patient } from '@/types/patient';
 
@@ -32,73 +31,56 @@ const PatientHeader = ({ connectionStatus, patient }: PatientHeaderProps) => {
   };
 
   return (
-    <>
-      <header className="border-b border-border bg-primary">
-        <div className="container max-w-7xl mx-auto flex h-16 items-center justify-between px-4">
-          <div className="flex items-center space-x-4">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={handleBack}
-              className="mr-2 text-white hover:bg-primary/80"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            {/* Display patient information in header */}
-            {patient && (
-              <div className="text-white">
-                <h1 className="text-lg font-bold">{patient.name}</h1>
-                <div className="flex items-center text-xs space-x-4">
-                  <span>ID: {patient.identifier}</span>
-                  <span>{patient.age} years ({patient.gender})</span>
-                  <span>DOB: {patient.dob ? new Date(patient.dob).toLocaleDateString() : 'N/A'}</span>
-                </div>
-              </div>
-            )}
-          </div>
-          
-          <div className="flex items-center space-x-4">
-            {/* Doctor information */}
-            {isDoctor && doctor && (
-              <div className="hidden md:block text-right text-white text-sm">
-                <span>{doctor.name}</span>
-                {doctor.workplace && (
-                  <span className="ml-1">, {doctor.workplace}</span>
-                )}
-              </div>
-            )}
-            
-            {isDoctor && (
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={handlePatientSearch}
-                className="text-white hover:bg-primary/80"
-                title="Search Patients"
-              >
-                <Search className="h-5 w-5" />
-              </Button>
-            )}
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={handleLogout}
-              className="text-white hover:bg-primary/80"
-            >
-              <LogOut className="h-5 w-5" />
-            </Button>
-          </div>
+    <header className="bg-background border-b px-4 py-3 sticky top-0 z-50 print:hidden shadow-sm">
+      <div className="container max-w-7xl mx-auto flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Link to="/" className="text-2xl font-bold flex items-center">
+            <HeartPulse className="h-6 w-6 text-primary mr-2" />
+            <span>HealthSpace</span>
+          </Link>
+          {connectionStatus && (
+            <div className="hidden sm:flex items-center gap-2">
+              <span
+                className={`h-2 w-2 rounded-full ${
+                  connectionStatus.isConnected ? 'bg-green-500' : 'bg-red-500'
+                }`}
+              />
+              <span className="text-sm text-muted-foreground">
+                {connectionStatus.isConnected ? 'Connected' : 'Offline'}
+              </span>
+            </div>
+          )}
         </div>
-      </header>
 
-      {/* Connection status indicator for development */}
-      {connectionStatus && !connectionStatus.isConnected && (
-        <div className="bg-destructive/10 text-destructive rounded-md p-3 mb-4 container max-w-7xl mx-auto mt-4">
-          <p className="font-medium">Database connection error</p>
-          <p className="text-sm">Check console for details. Using demo data.</p>
+        <div className="flex items-center space-x-4">
+          {isDoctor && doctor && (
+            <div className="hidden md:block text-right text-sm">
+              <span>{doctor.name}</span>
+              {doctor.workplace && <span className="ml-1">, {doctor.workplace}</span>}
+            </div>
+          )}
+          {isDoctor && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handlePatientSearch}
+              className="text-muted-foreground hover:bg-muted/10"
+              title="Search Patients"
+            >
+              <Search className="h-5 w-5" />
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleLogout}
+            className="text-muted-foreground hover:bg-muted/10"
+          >
+            <LogOut className="h-5 w-5" />
+          </Button>
         </div>
-      )}
-    </>
+      </div>
+    </header>
   );
 };
 

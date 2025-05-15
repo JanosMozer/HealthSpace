@@ -230,7 +230,7 @@ const PatientSearch = () => {
   return (
     <div className="w-full space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-foreground">Patient Management</h2>
+        <h2 className="text-2xl font-bold text-foreground">HealthSpace</h2>
         <Dialog open={isAddingPatient} onOpenChange={setIsAddingPatient}>
           <DialogTrigger asChild>
             <Button className="bg-medical-accent hover:bg-medical-secondary">
