@@ -2,15 +2,8 @@
 import React, { useState } from 'react';
 import { TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Form, FormField, FormItem, FormLabel, FormControl } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import { useForm } from 'react-hook-form';
 import { Patient } from '@/types/patient';
-import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/hooks/use-auth';
-import { useToast } from '@/hooks/use-toast';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface MedicationsTabProps {
   patient: Patient;
@@ -19,107 +12,9 @@ interface MedicationsTabProps {
   setPatient?: React.Dispatch<React.SetStateAction<Patient>>;
 }
 
-const MedicationsTab = ({ patient, isDoctor, onAddMedication, setPatient }: MedicationsTabProps) => {
+const MedicationsTab = ({ patient }: MedicationsTabProps) => {
   const [showPastMedications, setShowPastMedications] = useState(false);
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const { doctor } = useAuth();
-  const { toast } = useToast();
   
-  // Form for adding medication
-  const medicationForm = useForm({
-    defaultValues: {
-      name: '',
-      dosage: '',
-      since: new Date().toISOString().split('T')[0],
-      current: true,
-    }
-  });
-  
-  // Submit medication form
-  const handleMedicationSubmit = async (data: any) => {
-    if (!patient.id) {
-      return;
-    }
-    
-    try {
-      // Add doctor information
-      const doctorName = doctor?.name || 'Unknown Doctor';
-      const doctorId = doctor?.id;
-      
-      // Insert medication
-      const { error: medicationError } = await supabase
-        .from('medications')
-        .insert({
-          patient_id: patient.id,
-          name: data.name,
-          dosage: data.dosage,
-          since: data.since,
-          current: data.current,
-          doctor_id: doctorId,
-          doctor_name: doctorName,
-        });
-        
-      if (medicationError) throw medicationError;
-      
-      // Also add to medical history
-      const medicationStatus = data.current ? 'started' : 'discontinued';
-      const { error: historyError } = await supabase
-        .from('medical_history')
-        .insert({
-          patient_id: patient.id,
-          date: data.since,
-          condition: `Medication: ${data.name} ${medicationStatus}`,
-          notes: `Dosage: ${data.dosage}. ${data.current ? 'Currently active.' : 'No longer active.'}`,
-          doctor_id: doctorId,
-          doctor_name: doctorName,
-          record_type: 'medication',
-        });
-      
-      if (historyError) console.error('Error adding to medical history:', historyError);
-      
-      if (setPatient) {
-        setPatient(prev => ({
-          ...prev,
-          currentConditions: [
-            ...prev.currentConditions,
-            {
-              name: data.name,
-              since: data.since,
-              medications: [data.dosage],
-              current: data.current,
-            }
-          ],
-          // Add to medical history
-          medicalHistory: [
-            {
-              date: data.since,
-              condition: `Medication: ${data.name} ${medicationStatus}`,
-              notes: `Dosage: ${data.dosage}. ${data.current ? 'Currently active.' : 'No longer active.'}`,
-              doctorName: doctorName,
-              recordType: 'medication',
-            },
-            ...prev.medicalHistory
-          ]
-        }));
-      }
-      
-      medicationForm.reset();
-      setIsFormOpen(false);
-      toast({
-        title: "Medication added",
-        description: "The medication has been saved successfully.",
-      });
-      
-    } catch (error) {
-      console.error('Error adding medication:', error);
-      toast({
-        title: "Error",
-        description: "Failed to add medication.",
-        variant: "destructive"
-      });
-    }
-  };
-
   // Divide medications by current status
   const currentMedications = patient?.currentConditions?.filter(med => med.current !== false) || [];
   const pastMedications = patient?.currentConditions?.filter(med => med.current === false) || [];
@@ -129,88 +24,6 @@ const MedicationsTab = ({ patient, isDoctor, onAddMedication, setPatient }: Medi
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-xl font-bold">Medications</h3>
       </div>
-      
-      {isDoctor && (
-        <Collapsible 
-          open={isFormOpen} 
-          onOpenChange={setIsFormOpen}
-          className="mb-6 print:hidden"
-        >
-          <CollapsibleTrigger asChild>
-            <Button 
-              variant="outline" 
-              className="w-full flex items-center justify-between mb-2"
-            >
-              <span>Add New Medication</span>
-              {isFormOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            </Button>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <Form {...medicationForm}>
-              <form onSubmit={medicationForm.handleSubmit(handleMedicationSubmit)} className="space-y-4 p-4 border border-border rounded-md">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <FormField
-                    control={medicationForm.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Medication Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Medication name..." {...field} />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={medicationForm.control}
-                    name="dosage"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Dosage</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g. 10mg twice daily" {...field} />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={medicationForm.control}
-                    name="since"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Since</FormLabel>
-                        <FormControl>
-                          <Input type="date" {...field} />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={medicationForm.control}
-                    name="current"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-end space-x-2">
-                        <FormControl>
-                          <input 
-                            type="checkbox" 
-                            checked={field.value} 
-                            onChange={e => field.onChange(e.target.checked)} 
-                            className="h-4 w-4"
-                          />
-                        </FormControl>
-                        <FormLabel>Currently Active</FormLabel>
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <div className="flex justify-end">
-                  <Button type="submit">Save Medication</Button>
-                </div>
-              </form>
-            </Form>
-          </CollapsibleContent>
-        </Collapsible>
-      )}
       
       <div className="space-y-6">
         {/* Current Medications Section */}

@@ -10,7 +10,7 @@ import TabsHeader from './TabsHeader';
 import AppointmentsTab from './tabs/AppointmentsTab';
 import MedicationsTab from './tabs/MedicationsTab';
 import ConditionsTab from './tabs/ConditionsTab';
-import ExaminationsTab from './tabs/ExaminationsTab';
+import ImagingResultsTab from './tabs/ImagingResultsTab';
 import MedicalHistoryTab from './tabs/MedicalHistoryTab';
 
 interface PatientTabsProps {
@@ -58,7 +58,7 @@ const PatientTabs: React.FC<PatientTabsProps> = ({
           </TabsContent>
           
           <TabsContent value="examinations" className="mt-0">
-            <ExaminationsTab 
+            <ImagingResultsTab 
               patient={patient} 
               isDoctor={isDoctor} 
               setPatient={setPatient} 

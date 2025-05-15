@@ -24,13 +24,13 @@ export interface Condition {
   description: string;
   doctorName?: string;
   doctorWorkplace?: string;
-  diagnosisTime?: string;
+  diagnosisDate?: string;  // Changed from diagnosisTime to diagnosisDate
   diagnosisPlace?: string;
 }
 
 // Appointment
 export interface Appointment {
-  id?: string; // Optional: if you assign a client-side ID before DB ID is known
+  id?: string; 
   date: string;
   time?: string;
   type: string;
@@ -38,16 +38,18 @@ export interface Appointment {
   doctorName?: string;
   doctorWorkplace?: string;
   status?: 'pending' | 'done';
+  bodyPart?: BodyPart;  // Added bodyPart
 }
 
-// Examination record
+// Renamed from Examination to ImagingResult for type consistency
 export interface Examination {
   date: string;
   name: string;
   notes: string;
   doctorName?: string;
   doctorWorkplace?: string;
-  imageUrl?: string; // URL to the image stored in a cloud storage service
+  imageUrl?: string;
+  bodyPart?: BodyPart;  // Added bodyPart
 }
 
 // Enhanced medical history record with doctor information
@@ -58,6 +60,7 @@ export interface MedicalHistoryRecord {
   doctorName?: string;
   doctorWorkplace?: string;
   recordType?: 'medication' | 'condition' | 'appointment' | 'general' | 'examination';
+  bodyPart?: BodyPart;  // Added bodyPart
 }
 
 // Complete patient type
@@ -73,6 +76,7 @@ export interface Patient {
     since: string;
     medications: string[];
     current?: boolean;
+    bodyPart?: BodyPart;  // Added bodyPart
   }[];
   medicalHistory: MedicalHistoryRecord[];
   bodyConditions: Condition[];

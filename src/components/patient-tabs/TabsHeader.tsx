@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CalendarDays, Pill, FileText, Image } from 'lucide-react';
@@ -34,7 +35,7 @@ const TabsHeader = () => {
         className="flex flex-col items-center py-4 gap-2 data-[state=active]:bg-primary/10"
       >
         <Image className="h-5 w-5" />
-        <span className="text-xs font-medium">Examinations</span>
+        <span className="text-xs font-medium">Imaging Results</span>
       </TabsTrigger>
       
       <TabsTrigger 

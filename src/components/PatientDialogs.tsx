@@ -1,12 +1,15 @@
+
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BodyPart } from '@/types/patient';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
+import { bodyPartOptions } from '@/lib/constants';
 
 interface PatientDialogsProps {
   patient: any;
@@ -40,31 +43,36 @@ const PatientDialogs = ({
   const { toast } = useToast();
   const [conditionForm, setConditionForm] = useState({
     description: '',
+    bodyPart: selectedBodyPart || '' as BodyPart | '',
   });
   
   const [medicationForm, setMedicationForm] = useState({
     name: '',
     dosage: '',
     since: new Date().toISOString().split('T')[0],
-    current: true, // Added current field, default to true, as DB now has it
+    current: true,
+    bodyPart: '' as BodyPart | '',
   });
   
   const [historyForm, setHistoryForm] = useState({
     condition: '',
     date: new Date().toISOString().split('T')[0],
     notes: '',
+    recordType: 'general',
+    bodyPart: '' as BodyPart | '',
   });
   
   const [appointmentForm, setAppointmentForm] = useState({
     date: new Date().toISOString().split('T')[0],
     type: '',
     place: '',
-    time: '09:00', // Added time field back
+    time: '09:00',
+    bodyPart: '' as BodyPart | '',
   });
 
   // Save condition to Supabase
   const saveCondition = async () => {
-    if (!selectedBodyPart || !patient.identifier) { // Use patient.identifier
+    if (!conditionForm.bodyPart || !patient.identifier) {
       toast({
         title: "Error",
         description: "Missing required information (patient identifier or body part)",
@@ -83,10 +91,10 @@ const PatientDialogs = ({
     }
     
     try {
-      console.log("Saving condition to database, patient identifier:", patient.identifier); // Use patient.identifier
+      console.log("Saving condition to database, patient identifier:", patient.identifier);
       const payload = {
-        patient_id: patient.identifier, // Use patient.identifier
-        body_part: selectedBodyPart,
+        patient_id: patient.identifier,
+        body_part: conditionForm.bodyPart,
         description: conditionForm.description,
       };
       console.log("Condition data:", payload);
@@ -104,7 +112,7 @@ const PatientDialogs = ({
       
       const newCondition = {
         id: data?.[0]?.id,
-        bodyPart: selectedBodyPart,
+        bodyPart: conditionForm.bodyPart as BodyPart,
         description: conditionForm.description,
       };
       
@@ -115,7 +123,7 @@ const PatientDialogs = ({
       
       toast({
         title: "Condition saved",
-        description: `Added condition for ${selectedBodyPart.charAt(0).toUpperCase() + selectedBodyPart.slice(1).replace(/([A-Z])/g, ' $1').trim()}`
+        description: `Added condition for ${conditionForm.bodyPart.charAt(0).toUpperCase() + conditionForm.bodyPart.slice(1).replace(/([A-Z])/g, ' $1').trim()}`
       });
       
     } catch (error) {
@@ -128,13 +136,13 @@ const PatientDialogs = ({
     } finally {
       setIsEditingCondition(false);
       setSelectedBodyPart(null);
-      setConditionForm({ description: '' });
+      setConditionForm({ description: '', bodyPart: '' });
     }
   };
   
   // Save medication to Supabase
   const saveMedication = async () => {
-    if (!patient.identifier) { // Use patient.identifier
+    if (!patient.identifier) {
       toast({
         title: "Error",
         description: "Patient identifier is missing",
@@ -153,13 +161,14 @@ const PatientDialogs = ({
     }
     
     try {
-      console.log("Saving medication to database, patient identifier:", patient.identifier); // Use patient.identifier
+      console.log("Saving medication to database, patient identifier:", patient.identifier);
       const payload = {
-        patient_id: patient.identifier, // Use patient.identifier
+        patient_id: patient.identifier,
         name: medicationForm.name,
         dosage: medicationForm.dosage,
         since: medicationForm.since,
-        current: medicationForm.current, // Ensure 'current' is sent
+        current: medicationForm.current,
+        body_part: medicationForm.bodyPart || null,
       };
       console.log("Medication data:", payload);
       
@@ -179,7 +188,8 @@ const PatientDialogs = ({
         name: medicationForm.name,
         since: medicationForm.since,
         medications: [medicationForm.dosage],
-        current: medicationForm.current, // Add current to local state update
+        current: medicationForm.current,
+        bodyPart: medicationForm.bodyPart as BodyPart || undefined,
       };
       
       setPatient((prev: any) => ({
@@ -205,14 +215,15 @@ const PatientDialogs = ({
         name: '',
         dosage: '',
         since: new Date().toISOString().split('T')[0],
-        current: true, // Reset current status
+        current: true,
+        bodyPart: '',
       });
     }
   };
   
   // Save medical history record to Supabase
   const saveHistoryRecord = async () => {
-    if (!patient.identifier) { // Use patient.identifier
+    if (!patient.identifier) {
       toast({
         title: "Error",
         description: "Patient identifier is missing",
@@ -231,12 +242,14 @@ const PatientDialogs = ({
     }
     
     try {
-      console.log("Saving medical history to database, patient identifier:", patient.identifier); // Use patient.identifier
+      console.log("Saving medical history to database, patient identifier:", patient.identifier);
       const payload = {
-        patient_id: patient.identifier, // Use patient.identifier
+        patient_id: patient.identifier,
         date: historyForm.date,
         condition: historyForm.condition,
         notes: historyForm.notes,
+        record_type: historyForm.recordType,
+        body_part: historyForm.bodyPart || null,
       };
       console.log("Medical history data:", payload);
       
@@ -256,6 +269,8 @@ const PatientDialogs = ({
         date: historyForm.date,
         condition: historyForm.condition,
         notes: historyForm.notes,
+        recordType: historyForm.recordType,
+        bodyPart: historyForm.bodyPart as BodyPart || undefined,
       };
       
       setPatient((prev: any) => ({
@@ -281,6 +296,8 @@ const PatientDialogs = ({
         condition: '',
         date: new Date().toISOString().split('T')[0],
         notes: '',
+        recordType: 'general',
+        bodyPart: '',
       });
     }
   };
@@ -296,21 +313,24 @@ const PatientDialogs = ({
       return;
     }
     
-    if (!appointmentForm.type.trim() || !appointmentForm.place.trim() || !appointmentForm.date || !appointmentForm.time) { // Added time validation
+    if (!appointmentForm.type.trim() || !appointmentForm.place.trim() || !appointmentForm.date || !appointmentForm.time) {
       toast({
         title: "Validation Error",
-        description: "All fields (Date, Time, Type, Place) are required", // Added Time to message
+        description: "All fields (Date, Time, Type, Place) are required",
         variant: "destructive"
       });
       return;
     }
     
     try {
-      console.log("Saving appointment to database, patient identifier:", patient.identifier);      const payload = {
-        patient_id: patient.identifier,        date: appointmentForm.date,
-        time: appointmentForm.time, // Added time back
+      console.log("Saving appointment to database, patient identifier:", patient.identifier);      
+      const payload = {
+        patient_id: patient.identifier,
+        date: appointmentForm.date,
+        time: appointmentForm.time,
         type: appointmentForm.type,
         place: appointmentForm.place,
+        body_part: appointmentForm.bodyPart || null,
       };
       console.log("Appointment data:", payload);
       
@@ -328,9 +348,10 @@ const PatientDialogs = ({
       const newAppointment = {
         id: data?.[0]?.id,
         date: appointmentForm.date,
-        time: appointmentForm.time, // Added time back
+        time: appointmentForm.time,
         type: appointmentForm.type,
         place: appointmentForm.place,
+        bodyPart: appointmentForm.bodyPart as BodyPart || undefined,
       };
       
       setPatient((prev: any) => ({
@@ -340,7 +361,7 @@ const PatientDialogs = ({
       
       toast({
         title: "Appointment added",
-        description: `Added appointment for ${appointmentForm.date} at ${appointmentForm.time}` // Added time to message
+        description: `Added appointment for ${appointmentForm.date} at ${appointmentForm.time}`
       });
       
     } catch (error) {
@@ -356,7 +377,8 @@ const PatientDialogs = ({
         date: new Date().toISOString().split('T')[0],
         type: '',
         place: '',
-        time: '09:00', // Reset time
+        time: '09:00',
+        bodyPart: '',
       });
     }
   };
@@ -370,11 +392,30 @@ const PatientDialogs = ({
             <DialogTitle>
               Add Condition for {selectedBodyPart ? (
                 selectedBodyPart.charAt(0).toUpperCase() + selectedBodyPart.slice(1).replace(/([A-Z])/g, ' $1').trim()
-              ) : ''}
+              ) : 'Patient'}
             </DialogTitle>
           </DialogHeader>
           
           <div className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Label htmlFor="bodyPart">Body Part</Label>
+              <Select
+                value={conditionForm.bodyPart}
+                onValueChange={(value) => setConditionForm({...conditionForm, bodyPart: value as BodyPart})}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select body part" />
+                </SelectTrigger>
+                <SelectContent>
+                  {bodyPartOptions.map(option => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
             <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
               <Textarea 
@@ -442,6 +483,25 @@ const PatientDialogs = ({
             </div>
             
             <div className="space-y-2">
+              <Label htmlFor="med-bodyPart">Related Body Part (Optional)</Label>
+              <Select
+                value={medicationForm.bodyPart}
+                onValueChange={(value) => setMedicationForm({...medicationForm, bodyPart: value as BodyPart})}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select body part" />
+                </SelectTrigger>
+                <SelectContent>
+                  {bodyPartOptions.map(option => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
               <Label htmlFor="med-since">Since</Label>
               <Input 
                 id="med-since"
@@ -478,32 +538,74 @@ const PatientDialogs = ({
           </DialogHeader>
           
           <div className="space-y-4 pt-4">
-            <div className="space-y-2">
-              <Label htmlFor="history-condition">Condition</Label>
-              <Input 
-                id="history-condition"
-                value={historyForm.condition}
-                onChange={(e) => setHistoryForm({...historyForm, condition: e.target.value})}
-                placeholder="Enter condition name"
-                className={!historyForm.condition.trim() ? 'border-red-500 focus-visible:ring-red-500' : ''}
-              />
-              {!historyForm.condition.trim() && (
-                <p className="text-xs text-red-500">Condition is required</p>
-              )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="history-condition">Condition</Label>
+                <Input 
+                  id="history-condition"
+                  value={historyForm.condition}
+                  onChange={(e) => setHistoryForm({...historyForm, condition: e.target.value})}
+                  placeholder="Enter condition name"
+                  className={!historyForm.condition.trim() ? 'border-red-500 focus-visible:ring-red-500' : ''}
+                />
+                {!historyForm.condition.trim() && (
+                  <p className="text-xs text-red-500">Condition is required</p>
+                )}
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="history-date">Date</Label>
+                <Input 
+                  id="history-date"
+                  type="date"
+                  value={historyForm.date}
+                  onChange={(e) => setHistoryForm({...historyForm, date: e.target.value})}
+                  className={!historyForm.date ? 'border-red-500 focus-visible:ring-red-500' : ''}
+                />
+                {!historyForm.date && (
+                  <p className="text-xs text-red-500">Date is required</p>
+                )}
+              </div>
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="history-date">Date</Label>
-              <Input 
-                id="history-date"
-                type="date"
-                value={historyForm.date}
-                onChange={(e) => setHistoryForm({...historyForm, date: e.target.value})}
-                className={!historyForm.date ? 'border-red-500 focus-visible:ring-red-500' : ''}
-              />
-              {!historyForm.date && (
-                <p className="text-xs text-red-500">Date is required</p>
-              )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="history-type">Record Type</Label>
+                <Select
+                  value={historyForm.recordType}
+                  onValueChange={(value) => setHistoryForm({...historyForm, recordType: value})}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select record type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="medication">Medication</SelectItem>
+                    <SelectItem value="condition">Condition</SelectItem>
+                    <SelectItem value="appointment">Appointment</SelectItem>
+                    <SelectItem value="examination">Imaging Result</SelectItem>
+                    <SelectItem value="general">General</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="history-bodyPart">Related Body Part (Optional)</Label>
+                <Select
+                  value={historyForm.bodyPart}
+                  onValueChange={(value) => setHistoryForm({...historyForm, bodyPart: value as BodyPart})}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select body part" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {bodyPartOptions.map(option => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             
             <div className="space-y-2">
@@ -540,32 +642,34 @@ const PatientDialogs = ({
           </DialogHeader>
           
           <div className="space-y-4 pt-4">
-            <div className="space-y-2">
-              <Label htmlFor="appointment-date">Date</Label>
-              <Input 
-                id="appointment-date"
-                type="date"
-                value={appointmentForm.date}
-                onChange={(e) => setAppointmentForm({...appointmentForm, date: e.target.value})}
-                className={!appointmentForm.date ? 'border-red-500 focus-visible:ring-red-500' : ''}
-              />
-              {!appointmentForm.date && (
-                <p className="text-xs text-red-500">Date is required</p>
-              )}
-            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="appointment-date">Date</Label>
+                <Input 
+                  id="appointment-date"
+                  type="date"
+                  value={appointmentForm.date}
+                  onChange={(e) => setAppointmentForm({...appointmentForm, date: e.target.value})}
+                  className={!appointmentForm.date ? 'border-red-500 focus-visible:ring-red-500' : ''}
+                />
+                {!appointmentForm.date && (
+                  <p className="text-xs text-red-500">Date is required</p>
+                )}
+              </div>
 
-            <div className="space-y-2"> {/* Added time input field back */}
-              <Label htmlFor="appointment-time">Time</Label>
-              <Input 
-                id="appointment-time"
-                type="time"
-                value={appointmentForm.time}
-                onChange={(e) => setAppointmentForm({...appointmentForm, time: e.target.value})}
-                className={!appointmentForm.time ? 'border-red-500 focus-visible:ring-red-500' : ''}
-              />
-              {!appointmentForm.time && (
-                <p className="text-xs text-red-500">Time is required</p>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="appointment-time">Time</Label>
+                <Input 
+                  id="appointment-time"
+                  type="time"
+                  value={appointmentForm.time}
+                  onChange={(e) => setAppointmentForm({...appointmentForm, time: e.target.value})}
+                  className={!appointmentForm.time ? 'border-red-500 focus-visible:ring-red-500' : ''}
+                />
+                {!appointmentForm.time && (
+                  <p className="text-xs text-red-500">Time is required</p>
+                )}
+              </div>
             </div>
             
             <div className="space-y-2">
@@ -594,6 +698,25 @@ const PatientDialogs = ({
               {!appointmentForm.place.trim() && (
                 <p className="text-xs text-red-500">Place is required</p>
               )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="appointment-bodyPart">Related Body Part (Optional)</Label>
+              <Select
+                value={appointmentForm.bodyPart}
+                onValueChange={(value) => setAppointmentForm({...appointmentForm, bodyPart: value as BodyPart})}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select body part" />
+                </SelectTrigger>
+                <SelectContent>
+                  {bodyPartOptions.map(option => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             
             <div className="flex justify-end space-x-2 pt-4">

@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import PatientInfo from '@/components/PatientInfo';
 import PatientTabs from '@/components/patient-tabs/PatientTabs';
@@ -14,6 +15,7 @@ const PatientProfile = () => {
   const { toast } = useToast();
   const { isDoctor, logout } = useAuth();
   const navigate = useNavigate();
+  const tabsRef = useRef<HTMLDivElement>(null);
   
   // Dialogs state
   const [isEditingCondition, setIsEditingCondition] = useState(false);
@@ -24,6 +26,7 @@ const PatientProfile = () => {
   
   // State for body part selection
   const [selectedBodyPart, setSelectedBodyPart] = useState<BodyPart | null>(null);
+  const [activeTab, setActiveTab] = useState<string>("appointments");
   
   // Patient data
   const [patient, setPatient] = useState<Patient>({
@@ -32,7 +35,7 @@ const PatientProfile = () => {
     age: 0,
     dob: '',
     gender: '',
-    identifier: parseInt(patientId || '0'), // Convert string to number
+    identifier: parseInt(patientId || '0'),
     currentConditions: [],
     medicalHistory: [],
     bodyConditions: [],
@@ -273,6 +276,20 @@ const PatientProfile = () => {
     setSelectedBodyPart(bodyPart);
     setIsEditingCondition(true);
   };
+  
+  // Handler for navigating to conditions tab
+  const navigateToConditionsTab = () => {
+    setActiveTab("conditions");
+    // Find and click the conditions tab trigger
+    const conditionsTabTrigger = document.querySelector('[value="conditions"][role="tab"]') as HTMLElement;
+    if (conditionsTabTrigger) {
+      conditionsTabTrigger.click();
+    }
+    // Scroll to the tabs section
+    if (tabsRef.current) {
+      tabsRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
 
   // Loading state
   if (loading) {
@@ -297,11 +314,12 @@ const PatientProfile = () => {
         {/* Patient information */}
         <PatientInfo 
           patient={patient} 
-          isReadOnly={!isDoctor} 
+          isReadOnly={!isDoctor}
+          onNavigateToConditions={navigateToConditionsTab}
         />
         
         {/* Tabbed sections */}
-        <div className="mt-8">
+        <div className="mt-8" ref={tabsRef}>
           <PatientTabs 
             patient={patient} 
             isDoctor={isDoctor} 
