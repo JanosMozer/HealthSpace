@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { TabsContent } from '@/components/ui/tabs';
 import { BodyPart, Patient } from '@/types/patient';
@@ -37,7 +36,7 @@ const ConditionsTab = ({ patient, isDoctor }: ConditionsTabProps) => {
                 </div>
                 <div className="text-right text-xs text-muted-foreground">
                   {condition.diagnosisPlace && <p>Place: {condition.diagnosisPlace}</p>}
-                  {condition.diagnosisTime && <p>Date: {condition.diagnosisTime}</p>}
+                  {condition.diagnosisDate && <p>Diagnosed: {condition.diagnosisDate || 'Unknown'}</p>}
                 </div>
               </div>
               <p className="text-sm mt-2">{condition.description}</p>
