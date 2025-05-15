@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -72,6 +71,15 @@ const PatientDialogs = ({
 
   // Save condition to Supabase
   const saveCondition = async () => {
+    if (!conditionForm.bodyPart) {
+      toast({
+        title: "Validation Error",
+        description: "Body part is required for the condition.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!conditionForm.bodyPart || !patient.identifier) {
       toast({
         title: "Error",

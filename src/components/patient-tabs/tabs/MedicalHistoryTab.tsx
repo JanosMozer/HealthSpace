@@ -1,474 +1,385 @@
-
 import React, { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
 import { TabsContent } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
 import { Form, FormField, FormItem, FormLabel, FormControl } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { useForm } from 'react-hook-form';
-import { Patient, MedicalHistoryRecord, BodyPart } from '@/types/patient';
-import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/hooks/use-auth';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronDown, ChevronUp, Plus, Search } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 import { bodyPartOptions } from '@/lib/constants';
 
-interface MedicalHistoryTabProps {
-  patient: Patient;
-  isDoctor: boolean;
-  onAddHistoryRecord?: () => void;
-  setPatient?: React.Dispatch<React.SetStateAction<Patient>>;
-}
-
-const MedicalHistoryTab = ({ patient, isDoctor, onAddHistoryRecord, setPatient }: MedicalHistoryTabProps) => {
-  const [expandedHistory, setExpandedHistory] = useState<string | null>(null);
-  const { doctor } = useAuth();
+const MedicalHistoryTab = ({ patient, isDoctor, setPatient }: MedicalHistoryTabProps) => {
+  const [selectedRecordType, setSelectedRecordType] = useState<string | null>(null);
+  const [medicalHistory, setMedicalHistory] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const { toast } = useToast();
-  const [loading, setLoading] = useState(false);
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedBodyPart, setSelectedBodyPart] = useState<BodyPart | ''>('');
-  const [filteredHistory, setFilteredHistory] = useState<MedicalHistoryRecord[]>([]);
 
-  // Effect to fetch all medical history for the patient when tab is first viewed
-  useEffect(() => {
-    if (patient.id) {
-      fetchMedicalHistory();
-    }
-  }, [patient.id]);
-
-  // Effect to filter medical history based on search term and selected body part
-  useEffect(() => {
-    if (!patient.medicalHistory) return;
-
-    let filtered = [...patient.medicalHistory];
-
-    // Filter by search term (case insensitive)
-    if (searchTerm.trim()) {
-      const searchTermLower = searchTerm.toLowerCase();
-      filtered = filtered.filter(record => 
-        record.condition.toLowerCase().includes(searchTermLower) || 
-        record.notes.toLowerCase().includes(searchTermLower) ||
-        (record.doctorName && record.doctorName.toLowerCase().includes(searchTermLower))
-      );
-    }
-
-    // Filter by body part
-    if (selectedBodyPart) {
-      filtered = filtered.filter(record => record.bodyPart === selectedBodyPart);
-    }
-
-    setFilteredHistory(filtered);
-  }, [searchTerm, selectedBodyPart, patient.medicalHistory]);
-
-  // Fetch all medical history records
-  const fetchMedicalHistory = async () => {
-    if (!patient.id) return;
-    
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('medical_history')
-        .select('*')
-        .eq('patient_id', patient.id)
-        .order('date', { ascending: false }); // Changed to true for oldest first
-        
-      if (error) throw error;
-      
-      if (data && setPatient) {
-        // Transform the data to our MedicalHistoryRecord format
-        const medicalHistory = data.map(record => ({
-          date: record.date,
-          condition: record.condition,
-          notes: record.notes,
-          doctorName: record.doctor_name || 'Unknown',
-          doctorWorkplace: record.doctor_workplace || '',
-          recordType: record.record_type as MedicalHistoryRecord['recordType'],
-          bodyPart: record.body_part as BodyPart | undefined,
-        }));
-        
-        setPatient(prev => ({
-          ...prev,
-          medicalHistory
-        }));
-
-        setFilteredHistory(medicalHistory);
-      }
-    } catch (error) {
-      console.error('Error fetching medical history:', error);
-      toast({
-        title: "Error",
-        description: "Failed to retrieve complete medical history.",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Toggle history item expansion
-  const toggleHistoryItem = (id: string) => {
-    setExpandedHistory(expandedHistory === id ? null : id);
-  };
-
-  // Form for adding medical history
   const historyForm = useForm({
     defaultValues: {
+      recordType: '',
       date: new Date().toISOString().split('T')[0],
-      condition: '',
-      notes: '',
-      recordType: 'general',
-      bodyPart: '' as BodyPart | '',
-    }
+      bodyPart: '',
+      description: '',
+      diagnosis_place: '',
+      diagnosisTime: '',
+      name: '',
+      dosage: '',
+      quantity: '',
+      since: '',
+      current: false,
+      type: '',
+      place: '',
+      time: '',
+    },
   });
 
-  // Submit history form
+  // Fetch medical history
+  useEffect(() => {
+    const fetchMedicalHistory = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('medical_history')
+          .select('*')
+          .eq('patient_id', patient.id)
+          .order('date', { ascending: false });
+
+        if (error) throw error;
+        setMedicalHistory(data || []);
+      } catch (error) {
+        console.error('Error fetching medical history:', error);
+      }
+    };
+
+    fetchMedicalHistory();
+  }, [patient.id]);
+
   const handleHistorySubmit = async (data: any) => {
-    if (!patient.id) {
+    if (!selectedRecordType) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please select a record type.',
+        variant: 'destructive',
+      });
       return;
     }
-    
+
     try {
-      // Add doctor information to the record
-      const doctorName = doctor?.name || 'Unknown Doctor';
-      const doctorWorkplace = doctor?.workplace || '';
-      const doctorId = doctor?.id;
-      
-      const newRecordPayload = {
+      const doctorName = patient.doctor?.name || 'Unknown Doctor';
+      const doctorId = patient.doctor?.id;
+      const doctorWorkplace = patient.doctor?.workplace || 'Unknown Workplace';
+
+      let payload: any = {};
+      let tableName = '';
+
+      // Determine the table and payload based on the record type
+      if (selectedRecordType === 'medication') {
+        tableName = 'medications';
+        payload = {
+          patient_id: patient.id,
+          name: data.name,
+          dosage: data.dosage,
+          quantity: data.quantity,
+          since: data.since,
+          current: data.current,
+          doctor_id: doctorId,
+          doctor_name: doctorName,
+          doctor_workplace: doctorWorkplace,
+        };
+      } else if (selectedRecordType === 'condition') {
+        tableName = 'conditions';
+        payload = {
+          patient_id: patient.id,
+          body_part: data.bodyPart,
+          description: data.description,
+          diagnosis_place: data.diagnosis_place,
+          diagnosis_time: data.diagnosisTime,
+          doctor_id: doctorId,
+          doctor_name: doctorName,
+          doctor_workplace: doctorWorkplace,
+        };
+      } else if (selectedRecordType === 'appointment') {
+        tableName = 'appointments';
+        payload = {
+          patient_id: patient.id,
+          date: data.date,
+          time: data.time,
+          type: data.type,
+          place: data.place,
+          doctor_id: doctorId,
+          doctor_name: doctorName,
+          doctor_workplace: doctorWorkplace,
+        };
+      }
+
+      // Insert into the specific table
+      const { error } = await supabase.from(tableName).insert(payload);
+      if (error) throw error;
+
+      // Add to medical history
+      const historyPayload = {
         patient_id: patient.id,
         date: data.date,
-        condition: data.condition,
-        notes: data.notes,
+        condition: selectedRecordType === 'medication' ? `Medication: ${data.name}` : data.description || data.type,
+        notes: selectedRecordType === 'medication' ? `Dosage: ${data.dosage}, Quantity: ${data.quantity}` : '',
+        record_type: selectedRecordType,
+        body_part: data.bodyPart || null,
         doctor_id: doctorId,
         doctor_name: doctorName,
         doctor_workplace: doctorWorkplace,
-        record_type: data.recordType,
-        body_part: data.bodyPart || null,
       };
 
-      const { data: insertedData, error } = await supabase
-        .from('medical_history')
-        .insert(newRecordPayload)
-        .select() // Optionally select the inserted record if you need its DB-generated ID
-        .single(); // Assuming you expect one record back
-        
-      if (error) throw error;
-      
-      if (setPatient) {
-        const newMedicalRecordEntry: MedicalHistoryRecord = {
-          date: data.date,
-          condition: data.condition,
-          notes: data.notes,
-          doctorName: doctorName,
-          doctorWorkplace: doctorWorkplace,
-          recordType: data.recordType as MedicalHistoryRecord['recordType'],
-          bodyPart: data.bodyPart || undefined,
-        };
+      const { error: historyError } = await supabase.from('medical_history').insert(historyPayload);
+      if (historyError) throw historyError;
 
-        setPatient(prev => {
-          const updatedHistory = [...prev.medicalHistory, newMedicalRecordEntry];
-          // Sort by date ascending (oldest first)
-          updatedHistory.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-          return {
-            ...prev,
-            medicalHistory: updatedHistory
-          };
-        });
-
-        // Update the filtered history as well
-        setFilteredHistory(prev => {
-          const updated = [...prev, newMedicalRecordEntry];
-          updated.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-          return updated;
-        });
-      }
-      
-      historyForm.reset();
-      setIsFormOpen(false);
       toast({
-        title: "Medical record added",
-        description: "The medical record has been saved successfully.",
+        title: 'Success',
+        description: `${selectedRecordType.charAt(0).toUpperCase() + selectedRecordType.slice(1)} added successfully.`,
       });
-      
+
+      historyForm.reset();
+      setSelectedRecordType(null);
+
+      // Refresh medical history
+      setMedicalHistory((prev) => [historyPayload, ...prev]);
     } catch (error) {
-      console.error('Error adding medical history:', error);
+      console.error('Error saving record:', error);
       toast({
-        title: "Error",
-        description: "Failed to add medical record.",
-        variant: "destructive"
+        title: 'Error',
+        description: 'Failed to save the record.',
+        variant: 'destructive',
       });
     }
   };
 
-  // Reset search filters
-  const resetFilters = () => {
-    setSearchTerm('');
-    setSelectedBodyPart('');
-  };
+  // Filter medical history based on search query
+  const filteredHistory = medicalHistory.filter((entry) =>
+    entry.condition.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <TabsContent value="medicalHistory">
-      <div className="flex justify-between items-center mb-4">
+      <div className="mb-6">
         <h3 className="text-xl font-bold">Medical History</h3>
+        <Input
+          placeholder="Search medical history..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="mt-2"
+        />
       </div>
-      
-      {/* Search and filter section */}
-      <div className="mb-6 p-4 bg-muted/30 rounded-lg print:hidden">
-        <h4 className="text-sm font-medium mb-3">Search & Filter</h4>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search medical records..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9"
-            />
+
+      <div className="space-y-4">
+        {filteredHistory.map((entry) => (
+          <div key={entry.id} className="p-4 border rounded-md">
+            <p className="font-bold">{entry.condition}</p>
+            <p className="text-sm text-muted-foreground">{entry.date}</p>
+            <p className="text-sm">{entry.notes}</p>
           </div>
-          
-          <Select 
-            value={selectedBodyPart} 
-            onValueChange={(value) => setSelectedBodyPart(value as BodyPart | '')}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Filter by body part" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">All body parts</SelectItem>
-              {bodyPartOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          
-          <Button 
-            variant="outline" 
-            onClick={resetFilters}
-            className="w-full sm:w-auto"
-          >
-            Reset Filters
-          </Button>
-        </div>
+        ))}
       </div>
-      
-      {isDoctor && (
-        <Collapsible 
-          open={isFormOpen} 
-          onOpenChange={setIsFormOpen}
-          className="mb-6 print:hidden"
-        >
-          <CollapsibleTrigger asChild>
-            <Button 
-              variant="outline" 
-              className="w-full flex items-center justify-between mb-2"
-            >
-              <span>Add New Medical Record</span>
-              {isFormOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            </Button>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <Form {...historyForm}>
-              <form onSubmit={historyForm.handleSubmit(handleHistorySubmit)} className="space-y-4 p-4 border border-border rounded-md">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={historyForm.control}
-                    name="date"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Date</FormLabel>
-                        <FormControl>
-                          <Input type="date" {...field} />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={historyForm.control}
-                    name="condition"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Condition</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Condition name..." {...field} />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={historyForm.control}
-                    name="recordType"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Record Type</FormLabel>
-                        <Select
-                          defaultValue={field.value}
-                          onValueChange={field.onChange}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select record type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="general">General</SelectItem>
-                            <SelectItem value="medication">Medication</SelectItem>
-                            <SelectItem value="condition">Medical Condition</SelectItem>
-                            <SelectItem value="appointment">Appointment</SelectItem>
-                            <SelectItem value="examination">Imaging Result</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={historyForm.control}
-                    name="bodyPart"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Body Part</FormLabel>
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select body part (optional)" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="">None</SelectItem>
-                            {bodyPartOptions.map((option) => (
-                              <SelectItem key={option.value} value={option.value}>
-                                {option.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <FormField
-                  control={historyForm.control}
-                  name="notes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Notes</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="Additional notes..." 
-                          {...field} 
-                          rows={3}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <div className="flex justify-end">
-                  <Button type="submit">Save Medical Record</Button>
-                </div>
-              </form>
-            </Form>
-          </CollapsibleContent>
-        </Collapsible>
-      )}
-      
-      {loading ? (
-        <div className="text-center py-4">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-2 text-sm text-muted-foreground">Loading medical records...</p>
-        </div>
-      ) : filteredHistory.length > 0 ? (
-        <div className="space-y-4">
-          {filteredHistory.map((entry, index) => (
-            <div 
-              key={index} 
-              className={`border rounded-md p-3 shadow-sm ${entry.recordType ? `bg-${getRecordTypeColor(entry.recordType)}-50` : ''}`}
-            >
-              <div className="flex justify-between items-center mb-2">
-                <div>
-                  <h4 className="font-medium">{entry.condition}</h4>
-                  {entry.doctorName && (
-                    <p className="text-xs text-muted-foreground">
-                      Doctor: {entry.doctorName}
-                      {entry.doctorWorkplace && `, ${entry.doctorWorkplace}`}
-                    </p>
-                  )}
-                  {entry.bodyPart && (
-                    <p className="text-xs text-primary">
-                      Body part: {bodyPartOptions.find(bp => bp.value === entry.bodyPart)?.label || entry.bodyPart}
-                    </p>
-                  )}
-                </div>
-                <div className="text-right">
-                  <span className="text-xs text-muted-foreground">{entry.date}</span>
-                  {entry.recordType && (
-                    <div className="text-xs mt-1 px-2 py-0.5 bg-muted inline-block rounded-full">
-                      {formatRecordType(entry.recordType)}
-                    </div>
-                  )}
-                </div>
-              </div>
-              {entry.notes && (
-                <div>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    className="p-0 h-auto text-xs text-primary mt-1 print:hidden"
-                    onClick={() => toggleHistoryItem(`history-${index}`)}
-                  >
-                    {expandedHistory === `history-${index}` ? "Hide notes" : "Show notes"}
-                  </Button>
-                  {expandedHistory === `history-${index}` && (
-                    <p className="text-sm mt-2 print:hidden">{entry.notes}</p>
-                  )}
-                  <p className="text-sm mt-2 hidden print:block">{entry.notes}</p>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-8">
-          {searchTerm || selectedBodyPart ? (
-            <div>
-              <p className="text-muted-foreground">No medical records match your search criteria</p>
-              <Button 
-                variant="link" 
-                onClick={resetFilters} 
-                className="mt-2"
-              >
-                Clear filters
-              </Button>
-            </div>
-          ) : (
-            <p className="text-muted-foreground">No medical history on record</p>
+
+      <div className="mt-6">
+        <h3 className="text-xl font-bold">Add Medical History</h3>
+      </div>
+
+      <Form {...historyForm}>
+        <form onSubmit={historyForm.handleSubmit(handleHistorySubmit)} className="space-y-4">
+          <FormField
+            control={historyForm.control}
+            name="recordType"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Record Type</FormLabel>
+                <Select
+                  value={selectedRecordType}
+                  onValueChange={(value) => {
+                    field.onChange(value);
+                    setSelectedRecordType(value);
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select record type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="medication">Medication</SelectItem>
+                    <SelectItem value="condition">Condition</SelectItem>
+                    <SelectItem value="appointment">Appointment</SelectItem>
+                    <SelectItem value="general">General</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormItem>
+            )}
+          />
+
+          {/* Conditional Fields Based on Record Type */}
+          {selectedRecordType === 'medication' && (
+            <>
+              <FormField
+                control={historyForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Medication Name</FormLabel>
+                    <Input placeholder="Enter medication name" {...field} />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={historyForm.control}
+                name="dosage"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Dosage</FormLabel>
+                    <Input placeholder="Enter dosage" {...field} />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={historyForm.control}
+                name="quantity"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Quantity</FormLabel>
+                    <Input placeholder="Enter quantity" {...field} />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={historyForm.control}
+                name="since"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Since</FormLabel>
+                    <Input type="date" {...field} />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={historyForm.control}
+                name="current"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Currently Taken</FormLabel>
+                    <Input type="checkbox" {...field} />
+                  </FormItem>
+                )}
+              />
+            </>
           )}
-        </div>
-      )}
+
+          {selectedRecordType === 'condition' && (
+            <>
+              <FormField
+                control={historyForm.control}
+                name="bodyPart"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Body Part</FormLabel>
+                    <Select
+                      value={field.value}
+                      onValueChange={field.onChange}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select body part" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {bodyPartOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={historyForm.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <Textarea placeholder="Enter condition description" {...field} />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={historyForm.control}
+                name="diagnosis_place"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Diagnosis Place</FormLabel>
+                    <Input placeholder="Enter diagnosis place" {...field} />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={historyForm.control}
+                name="diagnosisTime"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Diagnosis Date</FormLabel>
+                    <Input type="date" {...field} />
+                  </FormItem>
+                )}
+              />
+            </>
+          )}
+
+          {selectedRecordType === 'appointment' && (
+            <>
+              <FormField
+                control={historyForm.control}
+                name="date"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Date</FormLabel>
+                    <Input type="date" {...field} />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={historyForm.control}
+                name="time"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Time</FormLabel>
+                    <Input type="time" {...field} />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={historyForm.control}
+                name="type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Type</FormLabel>
+                    <Input placeholder="Enter appointment type" {...field} />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={historyForm.control}
+                name="place"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Place</FormLabel>
+                    <Input placeholder="Enter appointment location" {...field} />
+                  </FormItem>
+                )}
+              />
+            </>
+          )}
+
+          <div className="flex justify-end">
+            <Button type="submit">Save Record</Button>
+          </div>
+        </form>
+      </Form>
     </TabsContent>
   );
-};
-
-const getRecordTypeColor = (recordType: string): string => {
-  switch (recordType) {
-    case 'medication': return 'blue';
-    case 'condition': return 'amber';
-    case 'appointment': return 'green';
-    case 'examination': return 'purple';
-    default: return 'gray';
-  }
-};
-
-const formatRecordType = (recordType: string): string => {
-  switch (recordType) {
-    case 'medication': return 'Medication';
-    case 'condition': return 'Condition';
-    case 'appointment': return 'Appointment';
-    case 'examination': return 'Imaging Result';
-    case 'general': return 'General';
-    default: return recordType.charAt(0).toUpperCase() + recordType.slice(1);
-  }
 };
 
 export default MedicalHistoryTab;

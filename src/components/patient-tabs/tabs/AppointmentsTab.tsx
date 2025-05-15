@@ -11,6 +11,8 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { bodyPartOptions } from '@/lib/constants';
 
 interface AppointmentsTabProps {
   patient: Patient;
@@ -32,6 +34,7 @@ const AppointmentsTab = ({ patient, isDoctor, onAddAppointment, setPatient }: Ap
       time: '09:00',
       type: '',
       place: '',
+      bodyPart: '',
     }
   });
   
@@ -71,101 +74,42 @@ const AppointmentsTab = ({ patient, isDoctor, onAddAppointment, setPatient }: Ap
 
   // Submit appointment form
   const handleAppointmentSubmit = async (data: any) => {
-    if (!patient.id) {
-      console.error("Patient UUID is missing in AppointmentsTab");
+    if (!data.bodyPart) {
+      toast({
+        title: "Validation Error",
+        description: "Body part is required for the appointment.",
+        variant: "destructive",
+      });
       return;
     }
-    
+
     try {
-      // Add doctor information
-      const doctorName = doctor?.name || 'Unknown Doctor';
-      const doctorId = doctor?.id;
-      
       const payload = {
-        patient_id: patient.id, // Using patient UUID, not identifier
+        patient_id: patient.id,
         date: data.date,
         time: data.time,
         type: data.type,
         place: data.place,
-        doctor_id: doctorId,
-        doctor_name: doctorName,
-        doctor_workplace: doctor?.workplace || 'Unknown'
+        body_part: data.bodyPart, // Include body part
+        doctor_id: doctor?.id,
+        doctor_name: doctor?.name || 'Unknown Doctor',
       };
-      
-      console.log("Submitting appointment (AppointmentsTab):", payload);
 
-      const { data: insertedData, error: insertError } = await supabase
-        .from('appointment')
-        .insert(payload)
-        .select();
-        
-      if (insertError) {
-        console.error('Error adding appointment (AppointmentsTab):', insertError);
-        toast({
-          title: "Error",
-          description: "Failed to add appointment.",
-          variant: "destructive"
-        });
-        return;
-      }
-      
-      // Add to medical history
-      const { error: historyError } = await supabase
-        .from('medical_history')
-        .insert({
-          patient_id: patient.id, // Use UUID here
-          date: data.date,
-          condition: `Appointment: ${data.type}`,
-          notes: `Scheduled for ${data.date} at ${data.time || 'N/A'}. Location: ${data.place}`,
-          doctor_id: doctorId,
-          doctor_name: doctorName,
-          record_type: 'appointment',
-        });
-      
-      if (historyError) console.error('Error adding to medical history:', historyError);
-      
-      if (setPatient && insertedData && insertedData.length > 0) {
-        const newAppointmentEntry = {
-          id: insertedData[0].id,
-          date: insertedData[0].date,
-          time: insertedData[0].time,
-          type: insertedData[0].type,
-          place: insertedData[0].place,
-        };
-        
-        setPatient(prev => ({
-          ...prev,
-          appointments: [
-            ...(prev.appointments || []),
-            newAppointmentEntry
-          ],
-          // Add to medical history
-          medicalHistory: [
-            {
-              date: data.date,
-              condition: `Appointment: ${data.type}`,
-              notes: `Scheduled for ${data.date} at ${data.time || 'N/A'}. Location: ${data.place}`,
-              doctorName: doctorName,
-              recordType: 'appointment',
-            },
-            ...prev.medicalHistory
-          ]
-        }));
-      }
-      
-      appointmentForm.reset();
-      setIsFormOpen(false);
+      const { error } = await supabase.from('appointments').insert(payload);
+      if (error) throw error;
+
       toast({
-        title: "Appointment added",
+        title: "Appointment Added",
         description: "The appointment has been saved successfully.",
       });
-      
+
+      appointmentForm.reset();
     } catch (error) {
-      console.error('Error adding appointment (AppointmentsTab catch block):', error);
+      console.error("Error saving appointment:", error);
       toast({
         title: "Error",
-        description: "Failed to add appointment.",
-        variant: "destructive"
+        description: "Failed to save appointment.",
+        variant: "destructive",
       });
     }
   };
@@ -250,6 +194,30 @@ const AppointmentsTab = ({ patient, isDoctor, onAddAppointment, setPatient }: Ap
                         <FormControl>
                           <Input placeholder="Appointment location..." {...field} />
                         </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={appointmentForm.control}
+                    name="bodyPart"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Body Part</FormLabel>
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select body part" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {bodyPartOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </FormItem>
                     )}
                   />

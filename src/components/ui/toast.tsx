@@ -114,6 +114,10 @@ type ToastProps = React.ComponentPropsWithoutRef<typeof Toast>
 
 type ToastActionElement = React.ReactElement<typeof ToastAction>
 
+export const toast = (options: { title: string; description: string; variant?: string }) => {
+  // Implementation of the toast function
+};
+
 export {
   type ToastProps,
   type ToastActionElement,
