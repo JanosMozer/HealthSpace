@@ -3,8 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 import { Database } from '@/types/supabase';
 
 // Create a single supabase client for interacting with your database
-const supabaseUrl = 'https://vrgndduiezexrrjyklso.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZyZ25kZHVpZXpleHJyanlrbHNvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYyNzg5NTksImV4cCI6MjA2MTg1NDk1OX0.l85Y6N8zSj_OfIo1ffASHkutif42jP1yp4JTSpwYGUk';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_API_KEY;
 
 // --- Modify this line to add explicit headers ---
 export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
@@ -134,84 +134,3 @@ export const enableServiceRole = async () => {
   // This is just for debugging purposes - would require a service role key in production
   return false;
 };
-
-/* 
-DATABASE TABLE STRUCTURE:
-
-1. patients
-   - id: UUID (primary key)
-   - identifier: INT8 (unique patient number)
-   - name: VARCHAR
-   - age: INT4
-   - dob: DATE
-   - gender: VARCHAR
-   - created_at: TIMESTAMP
-
-2. doctors
-   - id: UUID (primary key)
-   - email: VARCHAR
-   - name: VARCHAR
-   - workplace: VARCHAR
-   - identifier: VARCHAR
-   - created_at: TIMESTAMP
-
-3. conditions
-   - id: UUID (primary key)
-   - patient_id: UUID (references patients.id)
-   - body_part: VARCHAR
-   - description: TEXT
-   - doctor_id: UUID (references doctors.id)
-   - doctor_name: VARCHAR
-   - doctor_workplace: VARCHAR
-   - diagnosis_place: VARCHAR
-   - diagnosis_time: TIME
-   - created_at: TIMESTAMP
-
-4. medications
-   - id: UUID (primary key)
-   - patient_id: UUID (references patients.id)
-   - name: VARCHAR
-   - dosage: VARCHAR
-   - since: DATE
-   - current: BOOLEAN
-   - doctor_id: UUID (references doctors.id)
-   - doctor_name: VARCHAR
-   - doctor_workplace: VARCHAR
-   - created_at: TIMESTAMP
-
-5. medical_history
-   - id: UUID (primary key)
-   - patient_id: UUID (references patients.id)
-   - date: DATE
-   - condition: VARCHAR
-   - notes: TEXT
-   - doctor_id: UUID (references doctors.id)
-   - doctor_name: VARCHAR
-   - doctor_workplace: VARCHAR
-   - record_type: VARCHAR
-   - created_at: TIMESTAMP
-
-6. appointment
-   - id: UUID (primary key)
-   - patient_id: UUID (references patients.id)
-   - date: DATE
-   - time: TIME
-   - type: VARCHAR
-   - place: VARCHAR
-   - doctor_id: UUID (references doctors.id)
-   - doctor_name: VARCHAR
-   - doctor_workplace: VARCHAR
-   - created_at: TIMESTAMP
-
-7. examinations (For future use with image storage)
-   - id: UUID (primary key)
-   - patient_id: UUID (references patients.id)
-   - date: DATE
-   - name: VARCHAR
-   - notes: TEXT
-   - image_url: VARCHAR (URL to stored image)
-   - doctor_id: UUID (references doctors.id)
-   - doctor_name: VARCHAR
-   - doctor_workplace: VARCHAR
-   - created_at: TIMESTAMP
-*/

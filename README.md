@@ -1,73 +1,96 @@
-# Welcome to your Lovable project
+# HealthSpace - Digital Healthcare Platform
 
-## Project info
+## Product Description
 
-**URL**: https://lovable.dev/projects/ee3226c3-d617-438b-8a3d-797c02ba0f49
+HealthSpace is a comprehensive digital healthcare platform designed to address the current limitations of the Hungarian healthcare system. The platform provides an integrated, user-friendly interface that focuses on simplicity while delivering visual experiences and quickly digestible information through graphical representation for both patients and healthcare professionals.
 
-## How can I edit this code?
+### Core Innovation
 
-There are several ways of editing your application.
+The platform addresses the fragmented nature of current healthcare systems by integrating multiple administrative interfaces (eMedsol, MedWorks, FEDRA) into a unified, accessible platform. HealthSpace transforms complex healthcare data into visual, intuitive interfaces that enable both patients and healthcare providers to efficiently manage medical information.
 
-**Use Lovable**
+### Key Features
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/ee3226c3-d617-438b-8a3d-797c02ba0f49) and start prompting.
+- **Visual Patient Profiles**: Interactive body diagrams with organ-specific condition mapping
+- **Integrated Medical Records**: Unified view of patient history, medications, and ongoing examinations
+- **Streamlined Administration**: Combined healthcare administration interface for medical staff
+- **Digital Appointment System**: Integrated booking system reducing phone-based scheduling
+- **Mobile Application**: Patient-accessible mobile interface for health management
 
-Changes made via Lovable will be committed automatically to this repo.
+## Technical Architecture
 
-**Use your preferred IDE**
+### Technology Stack
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+- **Frontend**: React 18 with TypeScript
+- **Build Tool**: Vite
+- **Styling**: Tailwind CSS with shadcn/ui components
+- **State Management**: React hooks and context
+- **Deployment**: Vercel
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### System Architecture
 
-Follow these steps:
+The platform is built with a modular component architecture:
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+- **Body Diagram System**: SVG-based interactive human body visualization
+- **Patient Management**: Comprehensive patient data handling and visualization
+- **Medical Records**: Structured medical documentation with search capabilities
+- **Administrative Interface**: Integrated healthcare administration tools
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### Data Integration
 
-# Step 3: Install the necessary dependencies.
-npm i
+- **EESZT Integration**: Connects with Hungarian Electronic Health Service
+- **Multi-System Compatibility**: Integrates with existing healthcare administrative systems
+- **Real-time Updates**: Live synchronization of medical data and appointments
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+## Development Status
+
+### Phase 1: Core Platform (Current)
+- Basic patient profile visualization
+- Body diagram with condition mapping
+- Medication tracking
+- Examination status monitoring
+- Medical history management
+
+### Phase 2: Administrative Integration (Planned)
+- Unified healthcare administration interface
+- Document management system
+- Patient workflow management
+- Appointment scheduling integration
+
+### Phase 3: Mobile Application (Planned)
+- Patient mobile interface
+- AI-powered health consultation
+- Patient community features
+- Preventive health management
+
+## Getting Started
+
+### Prerequisites
+- Node.js 18+ 
+- npm or bun package manager
+
+
+## Project Structure
+
+```
+src/
+├── components/          # React components
+│   ├── body-diagram/   # Interactive body visualization
+│   ├── patient-tabs/   # Patient information tabs
+│   └── ui/            # Reusable UI components
+├── pages/              # Application pages
+├── hooks/              # Custom React hooks
+├── types/              # TypeScript type definitions
+└── lib/                # Utility functions and configurations
 ```
 
-**Edit a file directly in GitHub**
+## Contributing
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+This project is developed as part of the Bosch x Richter Industrial Innovation Award competition. For development inquiries, please refer to the project documentation.
 
-**Use GitHub Codespaces**
+## License
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+Proprietary software - All rights reserved.
 
-## What technologies are used for this project?
+---
 
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/ee3226c3-d617-438b-8a3d-797c02ba0f49) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+*HealthSpace - Transforming healthcare through integrated digital solutions*
